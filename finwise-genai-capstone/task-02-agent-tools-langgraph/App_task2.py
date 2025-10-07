@@ -12,7 +12,6 @@ import warnings
 # Ignore warnings
 warnings.filterwarnings('ignore')
 
-api_key = 
 
 # Get API keys from Colab secrets
 google_api_key = st.secrets['GOOGLE_API_KEY']
