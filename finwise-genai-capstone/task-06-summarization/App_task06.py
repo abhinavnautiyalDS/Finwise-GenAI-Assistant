@@ -7,9 +7,10 @@ from langchain_core.documents import Document
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.prompts import PromptTemplate
-from langchain.prompts import PromptTemplate as LangchainPromptTemplate  # Alias if needed
+from langchain.prompts import PromptTemplate as LangchainPromptTemplate
 from packaging import version
 import langchain
+import tempfile
 
 # Page configuration for a clean, wide layout
 st.set_page_config(
@@ -90,15 +91,29 @@ REFINED SUMMARY:"""
 def load_documents(uploaded_files):
     raw_documents = []
     for uploaded_file in uploaded_files:
-        if uploaded_file.type == "application/pdf":
-            loader = PyPDFLoader(uploaded_file)
-        elif uploaded_file.type == "text/plain":
-            loader = TextLoader(uploaded_file)
-        else:
-            st.warning(f"Unsupported file type: {uploaded_file.type}")
-            continue
-        docs = loader.load()
-        raw_documents.extend(docs)
+        # Create a temporary file to store the uploaded content
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as temp_file:
+            temp_file.write(uploaded_file.read())
+            temp_file_path = temp_file.name
+        
+        try:
+            # Load based on file type
+            if uploaded_file.type == "application/pdf":
+                loader = PyPDFLoader(temp_file_path)
+                docs = loader.load()
+                raw_documents.extend(docs)
+                st.info(f"✅ Loaded {len(docs)} pages from PDF: {uploaded_file.name}")
+            elif uploaded_file.type == "text/plain":
+                loader = TextLoader(temp_file_path)
+                docs = loader.load()
+                raw_documents.extend(docs)
+                st.info(f"✅ Loaded text from TXT: {uploaded_file.name}")
+            else:
+                st.warning(f"⚠️ Unsupported file type: {uploaded_file.type} for {uploaded_file.name}")
+        finally:
+            # Clean up temporary file
+            os.unlink(temp_file_path)
+    
     return raw_documents
 
 # Text splitter
