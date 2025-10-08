@@ -23,10 +23,10 @@ st.title("💰 Financial Data Question Answering System")
 st.markdown("Ask natural language questions about our dummy financial database!")
 
 # --- API Key Loading ---
+# This remains cached as the API key doesn't change frequently
 @st.cache_resource
 def load_api_key():
     try:
-        # Assuming GOOGLE_API_KEY is in Streamlit secrets
         google_api_key = st.secrets["GOOGLE_API_KEY"]
         os.environ["GOOGLE_API_KEY"] = google_api_key
         genai.configure(api_key=google_api_key)
@@ -43,8 +43,10 @@ if 'api_key_loaded' not in st.session_state:
     st.session_state.api_key_loaded = load_api_key()
 
 # --- Database Setup Function ---
-@st.cache_resource
+# Removed @st.cache_resource here to ensure it runs on every app start/explicit button click
+# This ensures data is always generated if the file doesn't exist or is reset.
 def setup_database():
+    st.info(f"Attempting to create/recreate database at: {os.path.abspath(DB_FILE)}")
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
@@ -72,7 +74,7 @@ def setup_database():
     ''')
 
     # --- Generate Sample Data ---
-    # These numbers are already greater than 30, fulfilling the requirement.
+    # These numbers ensure at least 30 rows as requested
     num_clients = 35 # Generates 35 rows for clients
     client_data = {
         'client_id': range(1, num_clients + 1),
@@ -105,7 +107,7 @@ def setup_database():
 
     investments_df = pd.DataFrame(investment_data)
 
-    # Insert data (if tables are empty or always replace for fresh data)
+    # Insert data (always replace to ensure fresh data)
     clients_df.to_sql('clients', conn, if_exists='replace', index=False)
     investments_df.to_sql('investments', conn, if_exists='replace', index=False)
 
@@ -113,24 +115,31 @@ def setup_database():
     conn.close()
     return True
 
-# Ensure the database is set up
-if st.sidebar.button("Setup/Recreate Database (resets data)", type="secondary"):
-    with st.spinner("Setting up database with sample data..."):
+# Check if DB needs setup on initial load
+if not os.path.exists(DB_FILE):
+    st.warning("Database file not found. Setting up database with sample data...")
+    with st.spinner("Setting up database for the first time..."):
         if setup_database():
-            st.sidebar.success("Database 'financial_data.db' created and populated.")
+            st.success("Database 'financial_data.db' created and populated.")
+            st.session_state.langchain_initialized = False # Force re-initialization if DB was just created
+else:
+    st.sidebar.success(f"Database '{DB_FILE}' found.")
+
+# Button to manually recreate database
+if st.sidebar.button("Setup/Recreate Database (resets data)", type="secondary"):
+    with st.spinner("Recreating database with fresh sample data..."):
+        if setup_database():
+            st.sidebar.success("Database 'financial_data.db' recreated and populated.")
             # Clear cache for LangChain components to pick up new DB
             st.session_state.langchain_initialized = False # Force re-initialization
 
-if not os.path.exists(DB_FILE):
-    st.warning("Database file not found. Please click 'Setup/Recreate Database' in the sidebar.")
-else:
-    st.sidebar.success(f"Database '{DB_FILE}' found.")
 
 # --- LangChain Initialization ---
 @st.cache_resource(ttl=3600) # Cache for 1 hour, or until manually cleared
 def initialize_langchain_agent():
     if not os.path.exists(DB_FILE):
-        st.error("Database file not found. Cannot initialize LangChain agent.")
+        # This check is crucial if DB creation failed for some reason
+        st.error("Database file still not found after setup attempt. Cannot initialize LangChain agent.")
         return None
 
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
@@ -163,8 +172,9 @@ def initialize_langchain_agent():
     )
     return agent_executor, custom_prompt_template
 
+# Initialize LangChain agent only if API key loaded and DB file exists
 if 'langchain_initialized' not in st.session_state or not st.session_state.langchain_initialized:
-    if os.path.exists(DB_FILE) and st.session_state.api_key_loaded:
+    if st.session_state.api_key_loaded and os.path.exists(DB_FILE):
         with st.spinner("Initializing LangChain agent..."):
             agent_data = initialize_langchain_agent()
             if agent_data:
@@ -174,8 +184,10 @@ if 'langchain_initialized' not in st.session_state or not st.session_state.langc
                 st.sidebar.success("LangChain agent initialized!")
             else:
                 st.session_state.langchain_initialized = False
-    else:
-        st.info("Waiting for database setup and API key.")
+    elif not st.session_state.api_key_loaded:
+        st.info("Waiting for Google API Key to be loaded.")
+    elif not os.path.exists(DB_FILE):
+        st.info("Waiting for database to be set up.")
 
 
 # --- User Input and Query ---
@@ -186,33 +198,27 @@ if st.session_state.get('langchain_initialized', False):
     if st.button("Get Answer", type="primary"):
         if user_question:
             st.info("Querying the database...")
-            # Use StreamlitCallbackHandler to display verbose output
-            st_callback = StreamlitCallbackHandler(st.container())
+            # Create a container for the verbose output
+            verbose_container = st.empty()
+            st_callback = StreamlitCallbackHandler(verbose_container)
             
             try:
                 with st.spinner("Generating SQL and fetching answer..."):
-                    # Capture the verbose output for display
-                    # Redirect stdout to capture agent's thoughts
-                    old_stdout = io.StringIO()
-                    import sys
-                    sys.stdout = old_stdout
-
                     response = st.session_state.agent_executor.invoke(
                         {"input": st.session_state.custom_prompt_template.format(input=user_question)},
                         config={"callbacks": [st_callback]} # Pass callback for direct Streamlit output
                     )
                     
-                    sys.stdout = sys.__stdout__ # Restore stdout
-                    verbose_output = old_stdout.getvalue()
-
                 st.subheader("AI Answer:")
                 st.success(response['output'])
 
                 with st.expander("Show Agent's Thought Process (Verbose Output)"):
-                    st.code(verbose_output)
-                    # The StreamlitCallbackHandler already prints steps,
-                    # but this captures the final 'observation' which might not be in the callback.
-                    # We print it just in case, though st_callback should show most.
+                    # The StreamlitCallbackHandler already prints steps directly to verbose_container
+                    # So we just ensure it's displayed within the expander.
+                    # If you want to capture and display the *final* string output of the agent,
+                    # you'd need to explicitly redirect stdout around the invoke call again.
+                    # For now, the callback provides a good live view.
+                    pass # Callback handles printing, no need for extra capture here.
 
             except Exception as e:
                 st.error(f"An error occurred during query: {e}")
@@ -220,7 +226,7 @@ if st.session_state.get('langchain_initialized', False):
         else:
             st.warning("Please enter a question.")
 else:
-    st.info("Please set up the database and ensure the API key is loaded to proceed.")
+    st.info("Please set up the database and ensure the API key is loaded to proceed with queries.")
 
 st.markdown("---")
 st.markdown("#### Database Schema:")
@@ -235,6 +241,9 @@ with col1:
             conn.close()
         except Exception as e:
             st.error(f"Could not load clients table preview: {e}")
+    else:
+        st.info("Database file not found.")
+
 with col2:
     st.subheader("Investments Table")
     if os.path.exists(DB_FILE):
@@ -245,6 +254,8 @@ with col2:
             conn.close()
         except Exception as e:
             st.error(f"Could not load investments table preview: {e}")
+    else:
+        st.info("Database file not found.")
 
 st.markdown("---")
 st.info("Built with Streamlit, LangChain, Google Gemini Pro, and SQLite.")
