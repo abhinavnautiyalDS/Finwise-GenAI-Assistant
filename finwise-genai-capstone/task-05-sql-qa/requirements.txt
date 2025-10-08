@@ -4,3 +4,4 @@ langchain-google-genai
 sqlalchemy
 pandas
 numpy
+google.generativeai
