@@ -239,7 +239,7 @@ st.markdown("""
         transition: background-color 0.3s;
     }
     .stButton > button:hover {
-        background-color: #2980b9;
+        background-color: #000000;
     }
    
     /* Sidebar styling */
