@@ -1,4 +1,4 @@
-pip install to-requirements.txt
+pip install -r requirements.txt
 
 import os
 import streamlit as st
