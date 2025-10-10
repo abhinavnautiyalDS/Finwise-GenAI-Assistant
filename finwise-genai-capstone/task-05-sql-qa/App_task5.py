@@ -4,36 +4,36 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import os
-import io
-
 import google.generativeai as genai
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 from langchain.agents import create_sql_agent
-from langchain.callbacks import StreamlitCallbackHandler # For verbose output in Streamlit
+from langchain.callbacks import StreamlitCallbackHandler  # For verbose output in Streamlit
 
+# --------------------------------------------------------
 # --- Configuration ---
+# --------------------------------------------------------
 DB_FILE = "financial_data.db"
 
-# --- Streamlit UI Setup ---
-st.set_page_config(page_title="Financial Data QA System", layout="wide")
+st.set_page_config(page_title="💰 Financial Data QA System", layout="wide")
 st.title("💰 Financial Data Question Answering System")
-st.markdown("Ask natural language questions about our dummy financial database!")
+st.markdown("Ask natural language questions about our financial database (clients & investments).")
 
-# --- API Key Loading ---
-# This remains cached as the API key doesn't change frequently
+# --------------------------------------------------------
+# --- Load API Key ---
+# --------------------------------------------------------
 @st.cache_resource
 def load_api_key():
     try:
         google_api_key = st.secrets["GOOGLE_API_KEY"]
         os.environ["GOOGLE_API_KEY"] = google_api_key
         genai.configure(api_key=google_api_key)
-        st.success("Google API Key loaded successfully from Streamlit secrets.")
+        st.success("✅ Google API Key loaded successfully.")
         return True
     except KeyError:
-        st.error("Google API Key not found in Streamlit secrets. Please add it to your `.streamlit/secrets.toml` file.")
+        st.error("❌ Google API Key not found. Please add it to `.streamlit/secrets.toml`.")
         st.stop()
     except Exception as e:
         st.error(f"Error loading API key: {e}")
@@ -42,11 +42,11 @@ def load_api_key():
 if 'api_key_loaded' not in st.session_state:
     st.session_state.api_key_loaded = load_api_key()
 
-# --- Database Setup Function ---
-# Removed @st.cache_resource here to ensure it runs on every app start/explicit button click
-# This ensures data is always generated if the file doesn't exist or is reset.
+# --------------------------------------------------------
+# --- Database Setup ---
+# --------------------------------------------------------
 def setup_database():
-    st.info(f"Attempting to create/recreate database at: {os.path.abspath(DB_FILE)}")
+    st.info(f"Creating database at: {os.path.abspath(DB_FILE)}")
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
@@ -74,188 +74,180 @@ def setup_database():
     ''')
 
     # --- Generate Sample Data ---
-    # These numbers ensure at least 30 rows as requested
-    num_clients = 35 # Generates 35 rows for clients
-    client_data = {
+    num_clients = 35
+    clients_df = pd.DataFrame({
         'client_id': range(1, num_clients + 1),
         'name': [f'Client {i}' for i in range(1, num_clients + 1)],
         'age': np.random.randint(25, 70, num_clients),
         'risk_profile': np.random.choice(['Low', 'Medium', 'High'], num_clients, p=[0.4, 0.3, 0.3]),
         'portfolio_value': np.random.uniform(50000, 5000000, num_clients).round(2)
-    }
-    clients_df = pd.DataFrame(client_data)
+    })
 
-    num_investments = 100 # Generates 100 rows for investments
-    investment_data = []
+    num_investments = 100
     fund_names = ['Equity Growth', 'Bond Stabilizer', 'Tech Innovators', 'Global Diversified', 'Real Estate Income', 'Emerging Markets']
+    investment_data = []
 
+    start_date = datetime.now() - timedelta(days=5 * 365)
     for i in range(1, num_investments + 1):
-        client_id = np.random.randint(1, num_clients + 1)
-        fund_name = np.random.choice(fund_names)
-        amount_invested = np.random.uniform(1000, 500000).round(2)
-        start_date = datetime.now() - timedelta(days=5*365)
-        random_days = np.random.randint(0, 5*365)
-        investment_date = (start_date + timedelta(days=random_days)).strftime('%Y-%m-%d')
-        
         investment_data.append({
             'investment_id': i,
-            'client_id': client_id,
-            'fund_name': fund_name,
-            'amount_invested': amount_invested,
-            'date': investment_date
+            'client_id': np.random.randint(1, num_clients + 1),
+            'fund_name': np.random.choice(fund_names),
+            'amount_invested': np.random.uniform(1000, 500000).round(2),
+            'date': (start_date + timedelta(days=np.random.randint(0, 5 * 365))).strftime('%Y-%m-%d')
         })
-
     investments_df = pd.DataFrame(investment_data)
 
-    # Insert data (always replace to ensure fresh data)
+    # Insert/replace data
     clients_df.to_sql('clients', conn, if_exists='replace', index=False)
     investments_df.to_sql('investments', conn, if_exists='replace', index=False)
-
     conn.commit()
     conn.close()
     return True
 
-# Check if DB needs setup on initial load
+# --- Check DB existence ---
 if not os.path.exists(DB_FILE):
-    st.warning("Database file not found. Setting up database with sample data...")
-    with st.spinner("Setting up database for the first time..."):
+    st.warning("Database not found. Setting up new one...")
+    with st.spinner("Setting up database..."):
         if setup_database():
-            st.success("Database 'financial_data.db' created and populated.")
-            st.session_state.langchain_initialized = False # Force re-initialization if DB was just created
-else:
-    st.sidebar.success(f"Database '{DB_FILE}' found.")
+            st.success("✅ Database created successfully.")
 
-# Button to manually recreate database
-if st.sidebar.button("Setup/Recreate Database (resets data)", type="secondary"):
-    with st.spinner("Recreating database with fresh sample data..."):
+# Button for manual recreation
+if st.sidebar.button("🔄 Recreate Database"):
+    with st.spinner("Recreating database..."):
         if setup_database():
-            st.sidebar.success("Database 'financial_data.db' recreated and populated.")
-            # Clear cache for LangChain components to pick up new DB
-            st.session_state.langchain_initialized = False # Force re-initialization
+            st.sidebar.success("Database reset with fresh sample data.")
 
-
+# --------------------------------------------------------
 # --- LangChain Initialization ---
-@st.cache_resource(ttl=3600) # Cache for 1 hour, or until manually cleared
+# --------------------------------------------------------
+@st.cache_resource(ttl=3600)
 def initialize_langchain_agent():
     if not os.path.exists(DB_FILE):
-        # This check is crucial if DB creation failed for some reason
-        st.error("Database file still not found after setup attempt. Cannot initialize LangChain agent.")
+        st.error("Database missing. Please recreate it first.")
         return None
 
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
-    db_langchain = SQLDatabase.from_uri(f"sqlite:///{DB_FILE}")
-    toolkit = SQLDatabaseToolkit(db=db_langchain, llm=llm)
+    db = SQLDatabase.from_uri(f"sqlite:///{DB_FILE}")
+    toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 
-    custom_prompt_template = """You are an AI assistant that interacts with a financial database.
-    Your primary goal is to answer user questions by converting them into SQL queries, executing those queries, and then providing a clear, natural language answer.
-    Only use the tables provided: clients, investments.
-    Here are the schemas:
-    clients: client_id (PK), name, age, risk_profile, portfolio_value
-    investments: investment_id (PK), client_id (FK), fund_name, amount_invested, date
+    # Improved prompt
+    prompt_template = """
+    You are an expert AI assistant interacting with a financial database.
+    Convert the user question into an accurate SQL query, execute it, and explain the answer clearly.
 
-    When responding:
-    - If the question involves 'portfolio > 10L', interpret '10L' as 1,000,000.
-    - If the question involves 'portfolio < 5L', interpret '5L' as 500,000.
-    - Always be concise and directly answer the question.
-    - If you cannot find relevant information, state that clearly.
-    - Do not make assumptions or invent data.
-    - Double-check your SQL query before executing.
-    
+    Database tables:
+    - clients(client_id, name, age, risk_profile, portfolio_value)
+    - investments(investment_id, client_id, fund_name, amount_invested, date)
+
+    Interpret number units correctly:
+    - 'L' or 'lakh' = ×100,000
+    - 'Cr' or 'crore' = ×10,000,000
+    - 'K' or 'thousand' = ×1,000
+
+    Answer only using available data. Never invent or assume data.
+    If data isn’t found, state that clearly.
+
     Question: {input}
     """
-    
-    agent_executor = create_sql_agent(
+
+    agent = create_sql_agent(
         llm=llm,
         toolkit=toolkit,
         verbose=True,
         handle_parsing_errors=True,
     )
-    return agent_executor, custom_prompt_template
+    return agent, prompt_template
 
-# Initialize LangChain agent only if API key loaded and DB file exists
-if 'langchain_initialized' not in st.session_state or not st.session_state.langchain_initialized:
-    if st.session_state.api_key_loaded and os.path.exists(DB_FILE):
-        with st.spinner("Initializing LangChain agent..."):
-            agent_data = initialize_langchain_agent()
-            if agent_data:
-                st.session_state.agent_executor = agent_data[0]
-                st.session_state.custom_prompt_template = agent_data[1]
-                st.session_state.langchain_initialized = True
-                st.sidebar.success("LangChain agent initialized!")
-            else:
-                st.session_state.langchain_initialized = False
-    elif not st.session_state.api_key_loaded:
-        st.info("Waiting for Google API Key to be loaded.")
-    elif not os.path.exists(DB_FILE):
-        st.info("Waiting for database to be set up.")
+if 'agent_executor' not in st.session_state:
+    agent_data = initialize_langchain_agent()
+    if agent_data:
+        st.session_state.agent_executor, st.session_state.prompt_template = agent_data
+        st.sidebar.success("✅ LangChain agent initialized!")
 
+# --------------------------------------------------------
+# --- Question Handling ---
+# --------------------------------------------------------
+if 'history' not in st.session_state:
+    st.session_state.history = []
 
-# --- User Input and Query ---
-if st.session_state.get('langchain_initialized', False):
+if 'agent_executor' in st.session_state:
     st.markdown("---")
-    user_question = st.text_input("Ask a question about the financial data:", "Show me all high-risk clients with portfolio value greater than 1,500,000.")
+    st.subheader("Ask Your Question")
+
+    user_question = st.text_input(
+        "Enter a question related to clients or investments:",
+        "Show all high-risk clients with portfolio value greater than 1,000,000."
+    )
+
+    st.markdown("**Examples:**")
+    st.markdown("- Who are clients with medium risk and portfolio < 5L?")
+    st.markdown("- Total amount invested in 'Tech Innovators' fund?")
+    st.markdown("- Average portfolio value by risk profile?")
 
     if st.button("Get Answer", type="primary"):
-        if user_question:
-            st.info("Querying the database...")
-            # Create a container for the verbose output
-            verbose_container = st.empty()
-            st_callback = StreamlitCallbackHandler(verbose_container)
-            
+        if user_question.strip():
+            st.info("⏳ Querying the database...")
+            st_callback = StreamlitCallbackHandler(st.empty())
+
             try:
+                formatted_prompt = PromptTemplate.from_template(st.session_state.prompt_template).format(input=user_question)
                 with st.spinner("Generating SQL and fetching answer..."):
                     response = st.session_state.agent_executor.invoke(
-                        {"input": st.session_state.custom_prompt_template.format(input=user_question)},
-                        config={"callbacks": [st_callback]} # Pass callback for direct Streamlit output
+                        {"input": formatted_prompt},
+                        config={"callbacks": [st_callback]}
                     )
-                    
-                st.subheader("AI Answer:")
+                st.subheader("🧠 AI Answer:")
                 st.success(response['output'])
 
-                with st.expander("Show Agent's Thought Process (Verbose Output)"):
-                    # The StreamlitCallbackHandler already prints steps directly to verbose_container
-                    # So we just ensure it's displayed within the expander.
-                    # If you want to capture and display the *final* string output of the agent,
-                    # you'd need to explicitly redirect stdout around the invoke call again.
-                    # For now, the callback provides a good live view.
-                    pass # Callback handles printing, no need for extra capture here.
+                # Save history
+                st.session_state.history.append({
+                    "question": user_question,
+                    "answer": response['output']
+                })
 
             except Exception as e:
-                st.error(f"An error occurred during query: {e}")
-                st.warning("Please check the question format or try recreating the database.")
+                st.error(f"⚠️ Error: {e}")
         else:
-            st.warning("Please enter a question.")
-else:
-    st.info("Please set up the database and ensure the API key is loaded to proceed with queries.")
+            st.warning("Please enter a question first.")
 
+    # Display history
+    if st.session_state.history:
+        with st.expander("📜 Conversation History"):
+            for h in reversed(st.session_state.history):
+                st.write(f"**Q:** {h['question']}")
+                st.write(f"**A:** {h['answer']}")
+                st.markdown("---")
+
+else:
+    st.info("Please ensure the API key and database are set up before asking questions.")
+
+# --------------------------------------------------------
+# --- Database Preview ---
+# --------------------------------------------------------
 st.markdown("---")
-st.markdown("#### Database Schema:")
+st.header("📊 Database Schema Preview")
+
 col1, col2 = st.columns(2)
 with col1:
-    st.subheader("Clients Table")
-    if os.path.exists(DB_FILE):
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            clients_df_preview = pd.read_sql_query("SELECT * FROM clients LIMIT 5;", conn)
-            st.dataframe(clients_df_preview)
-            conn.close()
-        except Exception as e:
-            st.error(f"Could not load clients table preview: {e}")
-    else:
-        st.info("Database file not found.")
+    with st.expander("Clients Table"):
+        if os.path.exists(DB_FILE):
+            try:
+                with sqlite3.connect(DB_FILE) as conn:
+                    df_clients = pd.read_sql_query("SELECT * FROM clients LIMIT 5;", conn)
+                    st.dataframe(df_clients)
+            except Exception as e:
+                st.error(f"Error loading clients table: {e}")
 
 with col2:
-    st.subheader("Investments Table")
-    if os.path.exists(DB_FILE):
-        try:
-            conn = sqlite3.connect(DB_FILE)
-            investments_df_preview = pd.read_sql_query("SELECT * FROM investments LIMIT 5;", conn)
-            st.dataframe(investments_df_preview)
-            conn.close()
-        except Exception as e:
-            st.error(f"Could not load investments table preview: {e}")
-    else:
-        st.info("Database file not found.")
+    with st.expander("Investments Table"):
+        if os.path.exists(DB_FILE):
+            try:
+                with sqlite3.connect(DB_FILE) as conn:
+                    df_invest = pd.read_sql_query("SELECT * FROM investments LIMIT 5;", conn)
+                    st.dataframe(df_invest)
+            except Exception as e:
+                st.error(f"Error loading investments table: {e}")
 
 st.markdown("---")
-st.info("Built with Streamlit, LangChain, Google Gemini Pro, and SQLite.")
+st.caption("Built with ❤️ using Streamlit, LangChain, Google Gemini, and SQLite.")
