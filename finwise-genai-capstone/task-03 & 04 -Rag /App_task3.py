@@ -1,3 +1,4 @@
+pip freeze > requirements.txt
 
 import os
 import streamlit as st
