@@ -1,4 +1,5 @@
-pip install --upgrade pip
+pip install to-requirements.txt
+
 import os
 import streamlit as st
 from langchain.document_loaders import PyPDFLoader
