@@ -31,9 +31,11 @@ st.markdown("""
     }
     .summary-box {
         background-color: #f0f8ff;
+        color: #000000;  /* <-- Set text color to black */
         padding: 1rem;
         border-radius: 10px;
         border-left: 5px solid #1f77b4;
+        white-space: pre-wrap;  /* Preserve line breaks */
     }
     .stExpander > div > div > div {
         background-color: #fafafa;
