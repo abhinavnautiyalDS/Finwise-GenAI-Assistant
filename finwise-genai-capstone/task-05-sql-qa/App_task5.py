@@ -2,8 +2,9 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
 import os
+import requests
+from datetime import datetime, timedelta
 import google.generativeai as genai
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
@@ -16,6 +17,7 @@ from langchain.callbacks import StreamlitCallbackHandler  # For verbose output i
 # --- Configuration ---
 # --------------------------------------------------------
 DB_FILE = "financial_data.db"
+GITHUB_DB_URL = "https://github.com/abhinavnautiyalDS/Finwise-GenAI-Assistant/raw/main/finwise-genai-capstone/task-05-sql-qa/financial_data.db"
 
 st.set_page_config(page_title="💰 Financial Data QA System", layout="wide")
 st.title("💰 Financial Data Question Answering System")
@@ -43,80 +45,24 @@ if 'api_key_loaded' not in st.session_state:
     st.session_state.api_key_loaded = load_api_key()
 
 # --------------------------------------------------------
-# --- Database Setup ---
+# --- GitHub Database Fetch ---
 # --------------------------------------------------------
-def setup_database():
-    st.info(f"Creating database at: {os.path.abspath(DB_FILE)}")
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
+def fetch_github_db():
+    if not os.path.exists(DB_FILE):
+        st.info("Database not found locally. Downloading from GitHub...")
+        try:
+            response = requests.get(GITHUB_DB_URL)
+            response.raise_for_status()
+            with open(DB_FILE, "wb") as f:
+                f.write(response.content)
+            st.success("✅ Database downloaded from GitHub successfully.")
+        except Exception as e:
+            st.error(f"❌ Failed to fetch database from GitHub: {e}")
+            st.stop()
+    else:
+        st.info("✅ Using local cached database.")
 
-    # Create 'clients' table
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS clients (
-        client_id INTEGER PRIMARY KEY,
-        name TEXT,
-        age INTEGER,
-        risk_profile TEXT,
-        portfolio_value REAL
-    )
-    ''')
-
-    # Create 'investments' table
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS investments (
-        investment_id INTEGER PRIMARY KEY,
-        client_id INTEGER,
-        fund_name TEXT,
-        amount_invested REAL,
-        date TEXT,
-        FOREIGN KEY (client_id) REFERENCES clients(client_id)
-    )
-    ''')
-
-    # --- Generate Sample Data ---
-    num_clients = 35
-    clients_df = pd.DataFrame({
-        'client_id': range(1, num_clients + 1),
-        'name': [f'Client {i}' for i in range(1, num_clients + 1)],
-        'age': np.random.randint(25, 70, num_clients),
-        'risk_profile': np.random.choice(['Low', 'Medium', 'High'], num_clients, p=[0.4, 0.3, 0.3]),
-        'portfolio_value': np.random.uniform(50000, 5000000, num_clients).round(2)
-    })
-
-    num_investments = 100
-    fund_names = ['Equity Growth', 'Bond Stabilizer', 'Tech Innovators', 'Global Diversified', 'Real Estate Income', 'Emerging Markets']
-    investment_data = []
-
-    start_date = datetime.now() - timedelta(days=5 * 365)
-    for i in range(1, num_investments + 1):
-        investment_data.append({
-            'investment_id': i,
-            'client_id': np.random.randint(1, num_clients + 1),
-            'fund_name': np.random.choice(fund_names),
-            'amount_invested': np.random.uniform(1000, 500000).round(2),
-            'date': (start_date + timedelta(days=np.random.randint(0, 5 * 365))).strftime('%Y-%m-%d')
-        })
-    investments_df = pd.DataFrame(investment_data)
-
-    # Insert/replace data
-    clients_df.to_sql('clients', conn, if_exists='replace', index=False)
-    investments_df.to_sql('investments', conn, if_exists='replace', index=False)
-    conn.commit()
-    conn.close()
-    return True
-
-# --- Check DB existence ---
-if not os.path.exists(DB_FILE):
-    st.warning("Database not found. Setting up new one...")
-    with st.spinner("Setting up database..."):
-        if setup_database():
-            st.success("✅ Database created successfully.")
-
-# Button for manual recreation
-if st.sidebar.button("🔄 Recreate Database"):
-    with st.spinner("Recreating database..."):
-        if setup_database():
-            st.sidebar.success("Database reset with fresh sample data.")
+fetch_github_db()
 
 # --------------------------------------------------------
 # --- LangChain Initialization ---
@@ -124,7 +70,7 @@ if st.sidebar.button("🔄 Recreate Database"):
 @st.cache_resource(ttl=3600)
 def initialize_langchain_agent():
     if not os.path.exists(DB_FILE):
-        st.error("Database missing. Please recreate it first.")
+        st.error("Database missing. Please ensure the GitHub DB is accessible.")
         return None
 
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
