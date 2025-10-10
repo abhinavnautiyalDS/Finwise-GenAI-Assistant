@@ -4,7 +4,7 @@ langchain-community==0.1.23
 langchain-huggingface==0.0.24
 langchain-google-genai==0.1.24
 sentence-transformers==2.2.2
-faiss-gpu==1.7.4
+faiss-cpu==1.7.4
 pypdf==3.13.0
 ipywidgets==8.2.4
 huggingface_hub==0.19.0
