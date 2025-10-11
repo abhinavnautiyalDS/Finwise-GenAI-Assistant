@@ -83,23 +83,24 @@ st.markdown("""
     <h1 style="font-size: 3rem; margin-bottom: 0.5rem; font-weight: 700;">Finwise Capital</h1>
     <h2 style="font-size: 1.5rem; font-weight: 300; margin-bottom: 1rem;">AI-Driven Wealth Management & Portfolio Intelligence Platform</h2>
     <p style="font-size: 1.1rem; max-width: 800px; margin: 0 auto; opacity: 0.9;">
-        Bangalore-based wealth management firm serving High Net Worth Individuals, Family Offices, and Institutional Investors. 
-        Through Finwise IQ, we deliver personalized portfolio management, fund recommendations, risk profiling, and compliance reporting.
+        Finwise IQ is a working AI-powered wealth management platform that helps users analyze portfolios, assess risk, compare mutual funds, and generate compliance summaries. 
+        It includes intelligent chatbots with memory, tool-using AI agents, document-based Q&A, SQL-powered financial queries, and smart summarization engines. 
+        Finwise IQ also integrates graph-based analytics and automated workflows, delivering real-time, data-driven portfolio insights for investors and advisors..
     </p>
 </div>
 """, unsafe_allow_html=True)
 
 # Introduction
-st.markdown("""
-<div style="text-align: center; margin-bottom: 3rem;">
-    <h3 style="color: #2c3e50; font-weight: 600;">🚀 Next-Generation AI Financial Ecosystem</h3>
-    <p style="color: #5d6d7e; font-size: 1.1rem; max-width: 900px; margin: 0 auto;">
-        Finwise is pioneering the integration of Generative AI into wealth management. Explore our suite of intelligent 
-        assistants and AI-powered tools designed to empower you with smarter, data-driven portfolio insights and 
-        transform your advisory experience.
-    </p>
-</div>
-""", unsafe_allow_html=True)
+# st.markdown("""
+# <div style="text-align: center; margin-bottom: 3rem;">
+#     <h3 style="color: #2c3e50; font-weight: 600;">🚀 Next-Generation AI Financial Ecosystem</h3>
+#     <p style="color: #5d6d7e; font-size: 1.1rem; max-width: 900px; margin: 0 auto;">
+#         Finwise is pioneering the integration of Generative AI into wealth management. Explore our suite of intelligent 
+#         assistants and AI-powered tools designed to empower you with smarter, data-driven portfolio insights and 
+#         transform your advisory experience.
+#     </p>
+# </div>
+# """, unsafe_allow_html=True)
 
 # Application Blocks
 apps = [
