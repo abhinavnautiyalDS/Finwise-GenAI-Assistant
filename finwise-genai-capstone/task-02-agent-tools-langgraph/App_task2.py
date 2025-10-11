@@ -33,8 +33,8 @@ with st.sidebar:
     - **Stock Data:** Fetch real-time stock prices (requires Alpha Vantage API key).
     - **Web Search:** Find general information using `DuckDuckGoSearch`.
 
-    **How it Works (ReAct Agent):**
-    The agent employs a **Reasoning and Acting (ReAct)** approach, thinking step-by-step to:
+    **How it Works (ReAct ):**
+    The  employs a **Reasoning and Acting (ReAct)** approach, thinking step-by-step to:
     1.  **Observe** your query.
     2.  **Reason** which tool is best suited for the task.
     3.  **Act** by calling the selected tool with precise inputs.
@@ -195,7 +195,7 @@ system_prompt = """You are a highly capable and precise AI financial assistant. 
 agent = create_react_agent(
     llm_with_tools,
     tools,
-    messages_modifier=system_prompt
+    system_message=system_prompt # Changed messages_modifier to system_message
 )
 
 # --- Streamlit App UI ---
