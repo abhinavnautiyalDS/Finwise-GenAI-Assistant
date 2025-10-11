@@ -1,4 +1,3 @@
-uv pip install -- -r requirements.txt
 
 import os
 import streamlit as st
