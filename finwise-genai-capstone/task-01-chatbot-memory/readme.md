@@ -4,7 +4,8 @@
 
 # Task 1: Chatbot with Memory
 
-## Objective: Build a conversational chatbot that retains context across interactions.
+## Objective:
+Build a conversational chatbot that retains context across interactions.
 
 ## Tools Used : LLM: Gemini Pro via Google AI Studio API
 Framework: LangChain (Python)
