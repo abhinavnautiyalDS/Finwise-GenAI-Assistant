@@ -159,18 +159,14 @@ hr {{
 # --- Website Content ---
 
 # Main Title
-st.title("Finwise Capital | AI-Driven Wealth Management & Portfolio Intelligence Platform")
+st.title("Finwise IQ | Working AI-Powered Wealth Intelligence Platform")
 
 # Main Description
 st.markdown("""
     <p>
-    Finwise Capital is a Bangalore-based wealth management and financial advisory firm working with High Net Worth Individuals, 
-    Family Offices, and Institutional Investors. Through its flagship platform Finwise IQ, the company delivers personalized 
-    portfolio management, fund recommendations, risk profiling, and compliance reporting. 
-    <br><br>
-    Finwise is now working on integrating Generative AI into its ecosystem — building intelligent assistants, 
-    retrieval-based Q&A, and workflow automation to empower clients with smarter, data-driven portfolio insights 
-    and a next-generation advisory experience.
+    Finwise IQ is a working AI-powered wealth management platform that helps users analyze portfolios, assess risk, compare mutual funds, and generate compliance summaries. 
+    It includes intelligent chatbots with memory, tool-using AI agents, document-based Q&A, SQL-powered financial queries, and smart summarization engines. 
+    Finwise IQ also integrates graph-based analytics and automated workflows, delivering real-time, data-driven portfolio insights for investors and advisors.
     </p>
 """, unsafe_allow_html=True)
 
