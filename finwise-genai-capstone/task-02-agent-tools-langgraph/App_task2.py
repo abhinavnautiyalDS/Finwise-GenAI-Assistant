@@ -4,11 +4,12 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 from langchain_core.tools import tool
 from langchain_experimental.utilities.python import PythonREPL
-from langchain_community.tools import DuckDuckGoSearchRun # Corrected import for DuckDuckGoSearchRun
+from langchain_community.tools import DuckDuckGoSearchRun
 import math
 import requests
 import json
 import warnings
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage # Import message types
 
 # Ignore warnings
 warnings.filterwarnings('ignore')
@@ -33,8 +34,8 @@ with st.sidebar:
     - **Stock Data:** Fetch real-time stock prices (requires Alpha Vantage API key).
     - **Web Search:** Find general information using `DuckDuckGoSearch`.
 
-    **How it Works (ReAct ):**
-    The  employs a **Reasoning and Acting (ReAct)** approach, thinking step-by-step to:
+    **How it Works (ReAct Agent):**
+    The agent employs a **Reasoning and Acting (ReAct)** approach, thinking step-by-step to:
     1.  **Observe** your query.
     2.  **Reason** which tool is best suited for the task.
     3.  **Act** by calling the selected tool with precise inputs.
@@ -53,6 +54,7 @@ with st.sidebar:
     st.markdown("Built with ❤️ using LangChain & LangGraph")
 
 # --- API Key Loading ---
+@st.cache_resource # Cache API keys so they are loaded only once
 def load_api_keys():
     try:
         # Load Google API Key
@@ -107,7 +109,11 @@ def calculator(expression: str) -> str:
             r_monthly = r_annual / 12
             
             # EMI Formula: P * r * (1 + r)^n / ((1 + r)^n - 1)
-            emi = P * r_monthly * (math.pow(1 + r_monthly, n)) / (math.pow(1 + r_monthly, n) - 1)
+            # Handle the case where r_monthly is effectively 0 (very low interest rate)
+            if r_monthly == 0:
+                emi = P / n # Simple division for 0 interest
+            else:
+                emi = P * r_monthly * (math.pow(1 + r_monthly, n)) / (math.pow(1 + r_monthly, n) - 1)
             return f"Monthly EMI: ₹{emi:.2f}"
         else:
             # Evaluate simple expressions
@@ -173,7 +179,7 @@ tools = [calculator, python_repl, stock_price, web_search]
 llm_with_tools = llm.bind_tools(tools)
 
 # --- System Prompt ---
-system_prompt = """You are a highly capable and precise AI financial assistant. ALWAYS use the provided tools for calculations and data fetching when appropriate. Your workflow should be step-by-step:
+SYSTEM_PROMPT = """You are a highly capable and precise AI financial assistant. ALWAYS use the provided tools for calculations and data fetching when appropriate. Your workflow should be step-by-step:
 1.  **Analyze the User's Query:** Understand the core request.
 2.  **Identify Required Tools:** Determine which tool(s) are best suited for the task (e.g., calculator for EMI, python_repl for complex math, stock_price for market data, web_search for general info).
 3.  **Formulate Tool Calls:** Construct the exact input for the chosen tool.
@@ -191,11 +197,10 @@ system_prompt = """You are a highly capable and precise AI financial assistant. 
 -   Always provide a definitive final answer to the user's request.
 """
 
-# Create ReAct Agent
+# Create ReAct Agent (without system_message here)
 agent = create_react_agent(
     llm_with_tools,
     tools,
-    system_message=system_prompt # Changed messages_modifier to system_message
 )
 
 # --- Streamlit App UI ---
@@ -207,21 +212,34 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # Display conversation
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+for msg in st.session_state.messages:
+    # Use msg.content for displaying, assuming messages are stored as dicts or similar
+    # If you store actual BaseMessage objects, you might need msg.content
+    if isinstance(msg, dict):
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+    else: # Assume it's a BaseMessage object
+         with st.chat_message(msg.type): # 'human' or 'ai'
+            st.markdown(msg.content)
+
 
 # User input
 if prompt := st.chat_input("Ask me about financial calculations, stock prices, or general financial advice..."):
+    # Append user message (as a dict for consistent display logic, or as HumanMessage)
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.spinner("Thinking..."):
         try:
-            # Invoke agent
-            # The agent expects a list of messages, starting with a HumanMessage
-            response = agent.invoke({"messages": [("human", prompt)]})
+            # Prepare messages for the agent, including the SystemMessage
+            # The agent expects a list of BaseMessage objects for input
+            agent_input_messages = [SystemMessage(content=SYSTEM_PROMPT)] + \
+                                   [HumanMessage(content=m["content"]) if m["role"] == "user" else AIMessage(content=m["content"]) 
+                                    for m in st.session_state.messages if m["role"] != "user" or m["content"] != prompt] + \
+                                   [HumanMessage(content=prompt)]
+
+            response = agent.invoke({"messages": agent_input_messages})
             
             # The final response from the agent is typically the last message content
             final_response = response["messages"][-1].content
