@@ -183,7 +183,7 @@ blocks_data = [
         "title": "💰 Financial Chatbot with Memory",
         "description": "Engage in intelligent conversations about a wide range of financial topics. Our Financial Chatbot remembers your previous interactions, providing personalized and context-aware insights to help you navigate complex financial concepts and make informed decisions.",
         "link": "https://finwise-genai-assistant-puf9qq6dprr9aqtkchgfcm.streamlit.app/",
-        "image_filename": "finwise-genai-capstone/image (6).jpg" # Path to your chatbot image (e.g., a speech bubble or money bag icon)
+        "image_filename": "https://www.google.com/imgres?q=chess&imgurl=https%3A%2F%2Fwww.chess.com%2Fbundles%2Fweb%2Fimages%2Fsocial%2Fshare-play-og.65416864.png&imgrefurl=https%3A%2F%2Fwww.chess.com%2Fplay&docid=wF0tt_jCkiaGDM&tbnid=J-All030bjsguM&vet=12ahUKEwjrgePU0JyQAxW-WGwGHTc-DrsQM3oECBoQAA..i&w=2400&h=1260&hcb=2&ved=2ahUKEwjrgePU0JyQAxW-WGwGHTc-DrsQM3oECBoQAA" # Path to your chatbot image (e.g., a speech bubble or money bag icon)
     },
     {
         "title": "💰 Agentic Financial Assistant",
