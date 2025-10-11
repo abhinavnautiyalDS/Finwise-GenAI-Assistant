@@ -210,16 +210,16 @@ st.markdown("""
    
     /* User messages */
     div[data-testid="chatMessage"]:nth-child(odd) {
-        background-color: #e8f6ff;
+        background-color: #ffffff;
         border: 1px solid #3498db;
-        color: #333333; /* Ensure user text is readable */
+        color: #000000; /* Ensure user text is readable */
     }
    
     /* Bot messages */
     div[data-testid="chatMessage"]:nth-child(even) {
-        background-color: #000000; /* Black background for bot messages */
+        background-color: #ffffff; /* white background for bot messages */
         border: 1px solid #bdc3c7;
-        color: #ffffff; /* White text for contrast */
+        color: #000000; /* black text for contrast */
     }
    
     /* Input box */
