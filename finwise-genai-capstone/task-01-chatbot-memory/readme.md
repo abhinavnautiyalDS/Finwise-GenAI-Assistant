@@ -10,7 +10,7 @@ Build a conversational chatbot that retains context across interactions.
 ## Tools Used : LLM: Gemini Pro via Google AI Studio API
 Framework: LangChain
 Memory: ConversationBufferMemory 
-Model : Gemini Pro
+Model : Gemini 2.0 Flash
 
 ## Explanation : 
 
