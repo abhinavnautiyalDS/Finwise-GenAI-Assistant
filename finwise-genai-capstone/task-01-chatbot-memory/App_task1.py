@@ -111,7 +111,7 @@ with st.sidebar:
     st.header("About This Chatbot")
     st.markdown("""
     This chatbot helps with **financial planning** and **asset allocation** advice.
-    - Powered by Gemini-2.5-pro via LangChain.
+    - Powered by gemini-2.0-flash via LangChain.
     - Remembers conversation history for context-aware responses.
     - Ask about budgets, investments, retirement, and more!
     """)
@@ -132,7 +132,7 @@ except KeyError:
 @st.cache_resource
 def load_llm():
     return ChatGoogleGenerativeAI(
-        model="gemini-2.5-pro",
+        model="gemini-2.0-flash",
         google_api_key=api_key,
         temperature=0.7
     )
