@@ -11,6 +11,7 @@ from langchain.prompts import PromptTemplate as LangchainPromptTemplate
 from packaging import version
 import langchain
 import tempfile
+import requests # Import requests for N8N webhook
 
 # Page configuration for a clean, wide layout
 st.set_page_config(
@@ -231,6 +232,39 @@ if uploaded_files:
             st.subheader("📊 Document Summary")
             st.markdown(f'<div class="summary-box"><p>{summary}</p></div>', unsafe_allow_html=True)
             
+            # --- N8N Workflow Trigger ---
+            # Get N8N Webhook URL from environment variables or Streamlit secrets
+            # You should set this in .streamlit/secrets.toml: N8N_SUMMARY_WEBHOOK_URL="your_n8n_webhook_url"
+            N8N_WEBHOOK_URL = os.environ.get("N8N_SUMMARY_WEBHOOK_URL", st.secrets.get("N8N_SUMMARY_WEBHOOK_URL"))
+            
+            if N8N_WEBHOOK_URL: # Check if a URL is provided
+                try:
+                    # Prepare payload with relevant summary data
+                    n8n_payload = {
+                        "event": "document_summarized",
+                        "summary": summary,
+                        "chain_type_used": chain_type,
+                        "document_names": [f.name for f in uploaded_files],
+                        "num_chunks": len(docs),
+                        "timestamp": os.getenv("CURRENT_TIMESTAMP", "N/A") # Example of dynamic data
+                    }
+                    response = requests.post(N8N_WEBHOOK_URL, json=n8n_payload, timeout=10) # 10-second timeout
+                    
+                    if response.status_code == 200:
+                        st.toast("N8N workflow triggered successfully!", icon="✅")
+                    else:
+                        st.toast(f"N8N workflow trigger failed: HTTP {response.status_code}", icon="⚠️")
+                        st.info(f"N8N Response: {response.text}") # Show n8n's response for debugging
+                except requests.exceptions.Timeout:
+                    st.toast("N8N workflow trigger timed out.", icon="⚠️")
+                except requests.exceptions.RequestException as e:
+                    st.toast(f"N8N request error: {e}", icon="⚠️")
+                except Exception as e:
+                    st.toast(f"Unexpected N8N error: {e}", icon="⚠️")
+            else:
+                st.sidebar.info("N8N Webhook URL not configured. Skipping workflow trigger.")
+            # --- End N8N Workflow Trigger ---
+
             # Download summary
             st.download_button(
                 label="💾 Download Summary",
