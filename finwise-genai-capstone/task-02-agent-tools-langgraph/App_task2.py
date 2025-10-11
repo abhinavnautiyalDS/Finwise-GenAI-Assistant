@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
@@ -15,6 +16,22 @@ warnings.filterwarnings('ignore')
 # Get API keys from Colab secrets
 google_api_key = st.secrets('GOOGLE_API_KEY')
 alpha_vantage_key = st.secrets('ALPHA_VANTAGE_KEY', None)  # Optional for stock tool
+
+def load_api_key():
+    try:
+        google_api_key = st.secrets["GOOGLE_API_KEY"]
+        os.environ["GOOGLE_API_KEY"] = google_api_key
+
+        alpha_vantage_key = st.secrets('ALPHA_VANTAGE_KEY')
+        os.environ["GOOGLE_API_KEY"] = alpha_vantage_key
+        
+        st.success("✅  API Key loaded successfully.")
+    except KeyError:
+        st.error("❌  API Key not found. Please add it to `.streamlit/secrets.toml`.")
+        st.stop()
+    except Exception as e:
+        st.error(f"Error loading API key: {e}")
+        st.stop()
 
 # Initialize Gemini LLM
 llm = ChatGoogleGenerativeAI(
