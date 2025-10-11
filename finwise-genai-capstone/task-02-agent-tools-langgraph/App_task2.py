@@ -4,7 +4,6 @@ from langgraph.prebuilt import create_react_agent
 from langchain_core.tools import tool
 from langchain_experimental.utilities.python import PythonREPL
 from langchain_community.tools import DuckDuckGoSearchRun
-from google.colab import userdata
 import math
 import requests
 import json
@@ -14,8 +13,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Get API keys from Colab secrets
-google_api_key = userdata.get('GOOGLE_API_KEY')
-alpha_vantage_key = userdata.get('ALPHA_VANTAGE_KEY', None)  # Optional for stock tool
+google_api_key = st.secrets('GOOGLE_API_KEY')
+alpha_vantage_key = st.secrets('ALPHA_VANTAGE_KEY', None)  # Optional for stock tool
 
 # Initialize Gemini LLM
 llm = ChatGoogleGenerativeAI(
