@@ -10,6 +10,7 @@ import requests
 import json
 import warnings
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage # Import message types
+from langchain_core.runnables import RunnableConfig # Import for the config to pass to agent.invoke
 
 # Ignore warnings
 warnings.filterwarnings('ignore')
@@ -147,7 +148,7 @@ def stock_price(symbol: str) -> str:
         response.raise_for_status() # Raise an exception for bad status codes
         data = response.json()
         
-        if "Global Quote" in data:
+        if "Global Quote" in data and data['Global Quote']: # Ensure Global Quote exists and is not empty
             price = float(data['Global Quote']['05. price'])
             return f"Current price for {symbol}: ${price:.2f}"
         elif "Error Message" in data:
@@ -213,12 +214,10 @@ if "messages" not in st.session_state:
 
 # Display conversation
 for msg in st.session_state.messages:
-    # Use msg.content for displaying, assuming messages are stored as dicts or similar
-    # If you store actual BaseMessage objects, you might need msg.content
     if isinstance(msg, dict):
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
-    else: # Assume it's a BaseMessage object
+    else: # Assume it's a BaseMessage object from langchain_core.messages
          with st.chat_message(msg.type): # 'human' or 'ai'
             st.markdown(msg.content)
 
@@ -255,10 +254,21 @@ if prompt := st.chat_input("Ask me about financial calculations, stock prices, o
                     if hasattr(msg, 'tool_calls') and msg.tool_calls:
                         st.write(f"**Agent Thought (Tool Call):**")
                         for tool_call in msg.tool_calls:
-                            st.json(tool_call.dict())
+                            # Check if tool_call is a Pydantic object with .dict(), or if it's already a dict
+                            if hasattr(tool_call, 'dict'):
+                                st.json(tool_call.dict())
+                            else:
+                                st.json(tool_call) # If it's already a dict, just pass it
                     elif msg.type == 'tool':
                         st.write(f"**Tool Observation ({msg.name}):**")
-                        st.code(msg.content, language="json")
+                        # Tool content can be a string or JSON-like
+                        try:
+                            # Try to parse as JSON if it looks like it
+                            json_content = json.loads(msg.content)
+                            st.json(json_content)
+                        except (json.JSONDecodeError, TypeError):
+                            # Otherwise, display as code/text
+                            st.code(msg.content, language="text")
                     elif msg.type == 'ai':
                         st.write(f"**Agent AI Message:** {msg.content}")
                     elif msg.type == 'human':
