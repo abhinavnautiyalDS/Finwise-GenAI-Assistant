@@ -13,12 +13,25 @@ Memory: ConversationBufferMemory or ConversationSummaryBufferMemory
 
 ## Explanation : 
 
-1. First i store collected Api in colab Secrets
-2. then i define my llm
-3. i define a ConversationSummaryBufferMemory
-4. then i include my llm in memory to make my model memory present
-5. finally i use gradio in order to visualise my chatbox
+1. Store your API key in Colab Secrets to keep it secure and hidden from the code.
 
+2. Retrieve it using userdata.get() or os.environ for safe authentication.
+
+3. Define your LLM (Large Language Model), e.g. Gemini or GPT, using that API key.
+
+4. The LLM acts as the main brain that generates responses to your prompts.
+
+5. Create a ConversationSummaryBufferMemory to let the bot remember past chats.
+
+6. This memory summarises older messages, keeping the context concise and relevant.
+
+7. Combine your LLM and memory in a ConversationChain for a context-aware chatbot.
+
+8. The chain maintains conversation flow across multiple user inputs.
+
+9. Use Gradio to build an interactive chat interface for real-time user interaction.
+
+10. Launch the app to visualise and talk with your AI model directly in the browser.
 
 ## Deployement : 
 
