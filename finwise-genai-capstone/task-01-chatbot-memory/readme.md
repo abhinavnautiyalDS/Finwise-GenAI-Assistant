@@ -13,11 +13,11 @@ Memory: ConversationBufferMemory or ConversationSummaryBufferMemory
 
 ## Explanation : 
 
-1. Store your API key in Colab Secrets to keep it secure and hidden from the code.
+1. 1st I Store  API key in Colab Secrets to keep it secure and hidden from the code.
 
 2. Retrieve it using userdata.get() or os.environ for safe authentication.
 
-3. Define your LLM (Large Language Model), e.g. Gemini or GPT, using that API key.
+3. Define  LLM (Large Language Model) . Gemini , using that API key.
 
 4. The LLM acts as the main brain that generates responses to your prompts.
 
