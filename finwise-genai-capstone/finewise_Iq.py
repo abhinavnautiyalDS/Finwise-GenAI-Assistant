@@ -1,212 +1,237 @@
 import streamlit as st
-import webbrowser
 
-# Page configuration
+# --- Page Configuration ---
+# Sets the page title, icon, wide layout, and collapses the sidebar by default.
 st.set_page_config(
     page_title="Finwise Capital | AI-Driven Wealth Management",
-    page_icon="💰",
+    page_icon="💰", # A money bag emoji for the browser tab icon
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for beautiful styling
-st.markdown("""
+# --- Custom CSS for Styling ---
+# This block defines the visual style of the website using CSS.
+# It ensures a cohesive and modern look, including responsive design elements.
+primary_color = "#004d40" # A dark teal, often associated with finance/trust
+secondary_color = "#007BFF" # A standard blue for interactive elements like buttons
+
+st.markdown(f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-    
-    * {
-        font-family: 'Inter', sans-serif;
-    }
-    
-    .main-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 3rem 2rem;
-        border-radius: 15px;
-        margin-bottom: 2rem;
-        color: white;
-        text-align: center;
-    }
-    
-    .app-block {
-        background: white;
-        padding: 2rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        border: 1px solid #e0e0e0;
-        height: 100%;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    
-    .app-block:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-    }
-    
-    .app-title {
-        color: #2c3e50;
-        font-weight: 700;
-        font-size: 1.4rem;
-        margin-bottom: 1rem;
-    }
-    
-    .app-description {
-        color: #5d6d7e;
-        font-size: 1rem;
-        line-height: 1.6;
-        margin-bottom: 1.5rem;
-    }
-    
-    .app-icon {
-        font-size: 3rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .stButton button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        padding: 12px 30px;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 1rem;
-        width: 100%;
-        transition: all 0.3s ease;
-    }
-    
-    .stButton button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-    }
+/* General body and Streamlit app styling */
+html, body, .stApp {{
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    color: #333333;
+    background-color: #f8f9fa; /* Lighter background for the entire app */
+}}
+
+/* Main Title Styling */
+h1 {{
+    color: {primary_color};
+    text-align: center;
+    font-size: 2.8em; /* Larger title font size */
+    margin-bottom: 20px;
+    padding-top: 20px;
+}}
+
+/* Section Header Styling */
+h2 {{
+    color: {primary_color};
+    text-align: center;
+    font-size: 2em;
+    margin-top: 40px;
+    margin-bottom: 30px;
+}}
+
+/* Main Description Styling */
+.stMarkdown p {{
+    font-size: 1.1em;
+    line-height: 1.6;
+    text-align: center; /* Center-aligns the main description */
+    max-width: 850px; /* Limits width for better readability */
+    margin: auto; /* Centers the description block */
+    padding-bottom: 30px;
+    color: #444444;
+}}
+
+/* Horizontal Rule Styling */
+hr {{
+    border-top: 1px solid #e0e0e0;
+    margin-top: 40px;
+    margin-bottom: 40px;
+}}
+
+/* Individual Block Container Styling */
+.block-container {{
+    background-color: #ffffff; /* White background for each solution block */
+    border-radius: 12px; /* Rounded corners */
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1); /* Soft shadow for depth */
+    transition: all 0.3s ease-in-out; /* Smooth transition for hover effects */
+    text-align: center;
+    min-height: 380px; /* Ensures all blocks have a consistent height */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Distributes space between items */
+    align-items: center; /* Centers items horizontally */
+    border: 1px solid #e0e0e0; /* Subtle border */
+}}
+
+.block-container:hover {{
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15); /* Enhanced shadow on hover */
+    transform: translateY(-8px); /* Lifts the block slightly on hover */
+    border-color: {secondary_color}; /* Changes border color on hover */
+}}
+
+/* Block Title Styling */
+.block-title {{
+    font-size: 1.6em;
+    font-weight: 600; /* Semi-bold */
+    color: {primary_color};
+    margin-bottom: 15px;
+}}
+
+/* Block Description Styling */
+.block-description {{
+    font-size: 0.98em;
+    color: #555555;
+    flex-grow: 1; /* Allows description to take up available space */
+    line-height: 1.5;
+    margin-bottom: 20px;
+}}
+
+/* Block Image Styling */
+.block-image {{
+    width: 120px; /* Fixed width for images */
+    height: 120px; /* Fixed height for images */
+    object-fit: contain; /* Ensures the image fits without cropping */
+    margin-bottom: 20px;
+    border-radius: 8px; /* Slightly rounded corners for images */
+    border: 1px solid #f0f0f0; /* Light border around image */
+}}
+
+/* Redirect Button Styling */
+.redirect-button {{
+    display: inline-block;
+    padding: 12px 25px;
+    background-color: {secondary_color}; /* Blue button background */
+    color: white !important; /* Ensures text is white, overriding default link color */
+    text-align: center;
+    text-decoration: none !important; /* Removes underline from link */
+    font-size: 1.05em;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2); /* Soft shadow for button */
+}}
+
+.redirect-button:hover {{
+    background-color: #0056b3; /* Darker blue on hover */
+    transform: translateY(-2px); /* Slight lift on hover */
+    box-shadow: 0 6px 12px rgba(0, 123, 255, 0.3); /* Enhanced shadow on hover */
+}}
+
+/* Footer Styling */
+.footer {{
+    text-align: center;
+    margin-top: 50px;
+    padding: 20px;
+    color: #888888;
+    font-size: 0.9em;
+    border-top: 1px solid #eeeeee;
+}}
 </style>
 """, unsafe_allow_html=True)
 
-# Header Section
+
+# --- Website Content ---
+
+# Main Title
+st.title("Finwise Capital | AI-Driven Wealth Management & Portfolio Intelligence Platform")
+
+# Main Description
 st.markdown("""
-<div class="main-header">
-    <h1 style="font-size: 3rem; margin-bottom: 0.5rem; font-weight: 700;">Finwise Capital</h1>
-    <h2 style="font-size: 1.5rem; font-weight: 300; margin-bottom: 1rem;">AI-Driven Wealth Management & Portfolio Intelligence Platform</h2>
-    <p style="font-size: 1.1rem; max-width: 800px; margin: 0 auto; opacity: 0.9;">
-        Bangalore-based wealth management firm serving High Net Worth Individuals, Family Offices, and Institutional Investors. 
-        Through Finwise IQ, we deliver personalized portfolio management, fund recommendations, risk profiling, and compliance reporting.
+    <p>
+    Finwise Capital is a Bangalore-based wealth management and financial advisory firm working with High Net Worth Individuals, 
+    Family Offices, and Institutional Investors. Through its flagship platform Finwise IQ, the company delivers personalized 
+    portfolio management, fund recommendations, risk profiling, and compliance reporting. 
+    <br><br>
+    Finwise is now working on integrating Generative AI into its ecosystem — building intelligent assistants, 
+    retrieval-based Q&A, and workflow automation to empower clients with smarter, data-driven portfolio insights 
+    and a next-generation advisory experience.
     </p>
-</div>
 """, unsafe_allow_html=True)
 
-# Introduction
-st.markdown("""
-<div style="text-align: center; margin-bottom: 3rem;">
-    <h3 style="color: #2c3e50; font-weight: 600;">🚀 Next-Generation AI Financial Ecosystem</h3>
-    <p style="color: #5d6d7e; font-size: 1.1rem; max-width: 900px; margin: 0 auto;">
-        Finwise is pioneering the integration of Generative AI into wealth management. Explore our suite of intelligent 
-        assistants and AI-powered tools designed to empower you with smarter, data-driven portfolio insights and 
-        transform your advisory experience.
-    </p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown("---") # Horizontal separator
 
-# Application Blocks Data
-apps = [
+# Section Header for AI Solutions
+st.header("Explore Our AI-Powered Solutions")
+
+# --- Data for the Blocks ---
+# Each dictionary represents a block with its title, enhanced description,
+# the link to redirect to, and the local filename for its image.
+blocks_data = [
     {
-        "icon": "💰",
-        "title": "Financial Chatbot with Memory",
-        "description": "Engage in intelligent conversations about financial markets, investment strategies, and portfolio analysis. Our advanced chatbot maintains context throughout your discussion, providing personalized financial guidance and insights.",
-        "url": "https://finwise-genai-assistant-puf9qq6dprr9aqtkchgfcm.streamlit.app/"
+        "title": "💰 Financial Chatbot with Memory",
+        "description": "Engage in intelligent conversations about a wide range of financial topics. Our Financial Chatbot remembers your previous interactions, providing personalized and context-aware insights to help you navigate complex financial concepts and make informed decisions.",
+        "link": "https://finwise-genai-assistant-puf9qq6dprr9aqtkchgfcm.streamlit.app/",
+        "image_filename": "images/chatbot.png" # Placeholder filename
     },
     {
-        "icon": "🤖",
-        "title": "Agentic Financial Assistant",
-        "description": "Leverage autonomous AI agents that perform complex financial calculations, fetch real-time market data, and execute sophisticated financial analysis tasks independently. Perfect for rapid financial modeling and data-driven decision making.",
-        "url": "https://finwise-genai-assistant-em7uzkajvqedkpcyhctgq8.streamlit.app/"
+        "title": "💰 Agentic Financial Assistant",
+        "description": "Meet your dedicated Autonomous AI Agent, designed to streamline your financial tasks. This intelligent assistant excels at performing complex financial calculations, fetching real-time market data, and providing instant, accurate information to support your investment strategies.",
+        "link": "https://finwise-genai-assistant-em7uzkajvqedkpcyhctgq8.streamlit.app/",
+        "image_filename": "images/agent.png" # Placeholder filename
     },
     {
-        "icon": "📊",
-        "title": "AI-Powered PDF Insight Agent",
-        "description": "Transform lengthy financial documents into actionable intelligence. Upload PDFs of financial reports, compliance documents, or prospectuses and get instant answers to your specific questions with AI-powered document analysis.",
-        "url": "https://finwise-genai-assistant-ntajccym3nyh469d8qkppq.streamlit.app/"
+        "title": "🚀 AI-Powered PDF Insight Agent",
+        "description": "Unlock the hidden insights within your financial documents. Our AI-Powered PDF Insight Agent enables you to upload various PDF files – from annual reports to compliance documents – and ask intelligent questions, instantly extracting key information and generating summaries to save you time and effort.",
+        "link": "https://finwise-genai-assistant-ntajccym3nyh469d8qkppq.streamlit.app/",
+        "image_filename": "images/pdf_insight.png" # Placeholder filename
     },
     {
-        "icon": "🔍",
-        "title": "Financial Data Question Answering System",
-        "description": "Query complex financial datasets using natural language. Our intelligent system understands your questions about financial data and provides accurate, data-backed answers without requiring technical expertise in data analysis.",
-        "url": "https://finwise-genai-assistant-akc6rt3yvowr8edklrzhx9.streamlit.app/"
+        "title": "💰 Financial Data Question Answering System",
+        "description": "Transform raw data into actionable intelligence. Our Financial Data Question Answering System allows you to interact with structured financial datasets using natural language queries, providing instant answers and insights without the need for complex database skills.",
+        "link": "https://finwise-genai-assistant-akc6rt3yvowr8edklrzhx9.streamlit.app/",
+        "image_filename": "images/data_qa.png" # Placeholder filename
     },
     {
-        "icon": "📄",
-        "title": "Financial Document Summarizer",
-        "description": "Quickly extract key insights from extensive financial documents, earnings reports, or meeting transcripts. Save time and focus on critical information with AI-powered summarization that captures essential financial metrics and highlights.",
-        "url": "https://finwise-genai-assistant-epjrwcunmwcaaduuriwskv.streamlit.app/"
+        "title": "💼 Financial Document Summarizer",
+        "description": "Cut through the noise with our Financial Document Summarizer. Quickly condense lengthy financial reports, market analyses, or meeting transcripts into concise, digestible summaries, highlighting critical information and key takeaways for efficient decision-making.",
+        "link": "https://finwise-genai-assistant-epjrwcunmwcaaduuriwskv.streamlit.app/",
+        "image_filename": "images/summarizer.png" # Placeholder filename
     }
 ]
 
-# Create columns for the app blocks
-cols = st.columns(3)
+# --- Display Blocks in a Grid Layout ---
+# Uses Streamlit columns to arrange blocks, showing 3 blocks per row.
+cols = st.columns(3) # Create 3 columns for a responsive grid
 
-# Track which app was launched
-if 'launched_app' not in st.session_state:
-    st.session_state.launched_app = None
-
-for idx, app in enumerate(apps):
-    with cols[idx % 3]:
-        # Create the app block
+for i, block in enumerate(blocks_data):
+    with cols[i % 3]: # Cycle through the columns (0, 1, 2, then back to 0 for the next row)
+        # Each block is rendered as a custom HTML `div` using st.markdown.
+        # This allows for rich styling and direct integration of the redirect link.
         st.markdown(f"""
-        <div class="app-block">
-            <div class="app-icon">{app['icon']}</div>
-            <div class="app-title">{app['title']}</div>
-            <div class="app-description">{app['description']}</div>
+        <div class="block-container">
+            <h3 class="block-title">{block["title"]}</h3>
+            <img src="{block["image_filename"]}" alt="{block["title"]} Image" class="block-image">
+            <!-- 
+            IMPORTANT: For images to display, ensure you have an 'images' folder 
+            in the same directory as this Streamlit script. 
+            Place your image files (e.g., chatbot.png, agent.png) inside it.
+            Alternatively, replace 'images/filename.png' with a direct URL to your hosted images.
+            -->
+            <p class="block-description">{block["description"]}</p>
+            <a href="{block["link"]}" target="_blank" class="redirect-button">Launch Application</a>
         </div>
-        """, unsafe_allow_html=True)
-        
-        # Create launch button
-        if st.button(f"🚀 Launch {app['title']}", key=f"btn_{idx}"):
-            st.session_state.launched_app = app['title']
-            webbrowser.open_new_tab(app['url'])
+        """, unsafe_allow_html=True) # unsafe_allow_html is necessary to render custom HTML/CSS
 
-# Show success message if an app was launched
-if st.session_state.launched_app:
-    st.success(f"✅ Opening {st.session_state.launched_app} in a new tab...")
-    # Reset after showing message
-    st.session_state.launched_app = None
-
-# Alternative method using markdown with JavaScript
-st.markdown("---")
-st.markdown("### 🔗 Quick Links (Alternative)")
-st.markdown("You can also use these direct links:")
-
-for app in apps:
-    st.markdown(f"- [{app['icon']} {app['title']}]({app['url']})")
-
-# Footer
+# --- Footer ---
 st.markdown("""
-<div style="text-align: center; padding: 2rem; background: #f8f9fa; border-radius: 10px; margin-top: 2rem;">
-    <h4 style="color: #2c3e50; margin-bottom: 1rem;">Ready to Transform Your Financial Advisory Experience?</h4>
-    <p style="color: #5d6d7e; margin-bottom: 1.5rem;">
-        Contact us to learn more about our AI-powered wealth management solutions and how Finwise IQ can elevate your investment strategy.
-    </p>
-    <div style="color: #667eea; font-weight: 600;">
-        📍 Bangalore, India | 💼 Wealth Management & Financial Advisory
+    <div class="footer">
+        <p>Finwise Capital - Empowering your financial future with AI.</p>
+        <p>© 2025 Finwise Capital. All rights reserved.</p>
     </div>
-</div>
 """, unsafe_allow_html=True)
-
-# Instructions
-with st.expander("ℹ️ How to use this platform"):
-    st.markdown("""
-    ### Getting Started
-    
-    1. **Browse Applications**: Explore our AI-powered financial tools in the main section
-    2. **Launch Tools**: Click the "Launch" buttons to open any application in a new tab
-    3. **Allow Pop-ups**: Make sure your browser allows pop-ups for this site
-    
-    ### Troubleshooting
-    - If buttons don't work, check if your browser is blocking pop-ups
-    - Use the quick links section as an alternative
-    - All applications open in new browser tabs
-    
-    ### Supported Applications
-    - All applications are live Streamlit apps
-    - No login required for demo access
-    - Each tool is designed for specific financial use cases
-    """)
