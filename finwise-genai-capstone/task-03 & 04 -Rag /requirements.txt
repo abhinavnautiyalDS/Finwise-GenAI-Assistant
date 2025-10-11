@@ -3,7 +3,7 @@ langchain
 langchain-community
 langchain-huggingface
 langchain-google-genai
-sentence-transformers
+transformers
 faiss-cpu
 pypdf
 ipywidgets
