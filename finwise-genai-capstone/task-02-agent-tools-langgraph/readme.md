@@ -2,14 +2,14 @@
 
 ---
 
-## 🚀 **Task 2: AI Agent with External Tool Access**
+##  **Task 2: AI Agent with External Tool Access**
 
-### 🎯 **Objective**
+###  **Objective**
 Create an autonomous agent capable of using **external tools** to fetch or calculate data — such as interest calculators, stock data, web search, or executing Python code dynamically.
 
 ---
 
-### 🧰 **Tools Used**
+###  **Tools Used**
 - **LangGraph**  
 - **Gemini (Google Generative AI)**  
 - **LangChain**  
@@ -18,9 +18,9 @@ Create an autonomous agent capable of using **external tools** to fetch or calcu
 
 ---
 
-### 🧠 **Explanation**
+###  **Explanation**
 
-#### **1️⃣ Storing API Keys Securely in Colab Secrets**
+#### **1.  Storing API Keys Securely in Colab Secrets**
 The first step is to store the **Google API key** and **Alpha Vantage API key** in Colab’s secret storage.
 
 - The **Google API key** allows communication with the **Gemini model**, Google’s advanced generative AI that understands and generates natural language (and can even handle multimodal inputs such as code and images).  
@@ -30,7 +30,7 @@ By keeping these keys in Colab’s secrets, I ensure they remain **secure and pr
 
 ---
 
-#### **2️⃣ Defining the LLM Model – Gemini 2.0 Flash**
+#### **2.  Defining the LLM Model – Gemini 2.0 Flash**
 Next, I define my **Gemini 2.0 Flash** model.
 
 This version of Gemini is designed for **speed and token efficiency**, making it ideal for free-tier usage and lightweight applications.  
@@ -38,15 +38,15 @@ While it’s more efficient than **Gemini Pro**, it still provides impressive ca
 
 ---
 
-#### **3️⃣ Creating Four Smart Tools for the Agent**
+#### **3.  Creating Four Smart Tools for the Agent**
 Once the model is ready, I create **four intelligent tools** that extend its abilities — essentially giving the AI “hands” to interact with external sources and perform specialised actions.
 
 | Tool | Description |
 |------|--------------|
-| 🧮 **Calculator** | Performs complex mathematical and financial computations (e.g. compound interest, portfolio variance, risk-return analysis) with high precision. |
-| 🐍 **Python REPL** | Executes Python code dynamically, allowing the model to handle advanced logic, simulations, and data visualisations. |
-| 💹 **Stock Price** | Fetches current and historical stock data through the **Alpha Vantage API** for financial insights and performance tracking. |
-| 🌐 **Web Search** | Utilises the **DuckDuckGo Search API** to access real-time information from the web — ensuring the model can reference the latest data or trends. |
+|  **Calculator** | Performs complex mathematical and financial computations (e.g. compound interest, portfolio variance, risk-return analysis) with high precision. |
+|  **Python REPL** | Executes Python code dynamically, allowing the model to handle advanced logic, simulations, and data visualisations. |
+|  **Stock Price** | Fetches current and historical stock data through the **Alpha Vantage API** for financial insights and performance tracking. |
+|  **Web Search** | Utilises the **DuckDuckGo Search API** to access real-time information from the web — ensuring the model can reference the latest data or trends. |
 
 By combining these tools, the agent can perform **multi-step reasoning** — for example:  
 1. Understand a financial query.  
@@ -56,7 +56,7 @@ By combining these tools, the agent can perform **multi-step reasoning** — for
 
 ---
 
-#### **4️⃣ Testing the Model on Different Queries**
+#### **4.  Testing the Model on Different Queries**
 Finally, I test the agent by running it on a variety of **real-world queries** — ranging from financial analyses and stock lookups to Python-based calculations and web research.
 
 During testing, I observe how effectively the agent selects and uses its tools:
