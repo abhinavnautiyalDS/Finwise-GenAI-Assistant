@@ -206,7 +206,7 @@ agent = create_react_agent(
 
 # --- Streamlit App UI ---
 st.title("💰 Agentic Financial Assistant")
-st.markdown("### Powered by LangGraph & Gemini 2.5 Pro")
+st.markdown("### Powered by LangGraph & gemini flash 2.0")
 
 # Session state for conversation history
 if "messages" not in st.session_state:
