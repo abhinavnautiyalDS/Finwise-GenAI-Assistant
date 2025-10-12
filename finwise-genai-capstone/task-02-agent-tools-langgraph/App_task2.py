@@ -28,7 +28,7 @@ with st.sidebar:
     st.title("🤖 About This Agent")
     st.markdown("""
     This is an **Autonomous AI Agent** designed to assist with financial calculations and data fetching.
-    It uses **LangGraph** for advanced agentic orchestration and **Gemini 2.5 Pro** as its brain.
+    It uses **LangGraph** for advanced agentic orchestration and **gemini flash 2.0** as its brain.
 
     **Capabilities:**
     - **Calculations:** Perform complex math, including EMI and compound interest, using a `calculator` or `python_repl` tool.
