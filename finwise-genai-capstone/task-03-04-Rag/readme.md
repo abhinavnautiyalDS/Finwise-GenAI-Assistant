@@ -18,6 +18,9 @@ Build a system that can **answer questions from your own uploaded documents** us
 
 ###  **Explanation**
 
+<img width="1095" height="655" alt="image" src="https://github.com/user-attachments/assets/bdb13375-e254-448b-8e19-e724a9e6eb96" />
+
+
 #### **1.  Storing API Keys Securely in Colab Secrets**
 The first step is to store the **Google API key** and **Hugging Face API key** in Colab’s secret storage.
 
@@ -73,5 +76,6 @@ I use the **`sentence-transformers/all-MiniLM-L6-v2`** model to generate embeddi
 ## **Deployment**
 
 Finaly, i Deployed my model in streamlit 
-App link : 
+**App link** : https://finwise-genai-assistant-ntajccym3nyh469d8qkppq.streamlit.app/
+<img width="1887" height="853" alt="image" src="https://github.com/user-attachments/assets/0a2a1da7-066f-4061-9b39-bfeadcb03beb" />
 
