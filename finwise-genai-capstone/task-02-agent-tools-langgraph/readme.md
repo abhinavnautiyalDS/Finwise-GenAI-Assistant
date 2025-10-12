@@ -64,8 +64,4 @@ During testing, I observe how effectively the agent selects and uses its tools:
 - For **financial formulas**, it switches to the *Calculator* or *Python REPL*.  
 - For **news or general knowledge**, it uses the *Web Search* function.  
 
-This ensures the agent not only understands natural language but also knows **when and how to use each tool intelligently**, much like a skilled human analyst equipped with the right set of digital resources.
 
----
-
-💡 *This setup demonstrates how LangChain and Gemini can be combined with external APIs to build a truly autonomous, multi-capable AI system.*
