@@ -1,4 +1,4 @@
-<img width="260" height="260" alt="image" src="https://github.com/user-attachments/assets/9a6a8235-6541-4c8d-9c1f-1a8f4a6b3af7" />
+<img width="265" height="265" alt="image" src="https://github.com/user-attachments/assets/76619d51-2d6e-49f1-9721-442660d32912" />
 
 ## **Task 5: SQL - Based QA System**
 
