@@ -62,6 +62,14 @@ Finally, I test the agent by running it on a variety of **real-world queries** â
 During testing, I observe how effectively the agent selects and uses its tools:
 - For **stock prices**, it automatically calls the *Stock Price* tool.  
 - For **financial formulas**, it switches to the *Calculator* or *Python REPL*.  
-- For **news or general knowledge**, it uses the *Web Search* function.  
+- For **news or general knowledge**, it uses the *Web Search* function.
+
+
+## **Deployment** 
+Finally i deployed my model on streamlit 
+
+**App link** : https://finwise-genai-assistant-em7uzkajvqedkpcyhctgq8.streamlit.app/
+<img width="1895" height="855" alt="image" src="https://github.com/user-attachments/assets/75ad6518-ee3c-4c20-af0e-c78a77902e44" />
+
 
 
