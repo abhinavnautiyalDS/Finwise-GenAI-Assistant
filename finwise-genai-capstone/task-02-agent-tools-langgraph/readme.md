@@ -12,11 +12,9 @@ LangGraph ,Gemini , langchain ,Python ,Alpha Vintage
 ## **Explaination** 
 
  1. **Storing API Keys Securely in Colab Secrets**
-The first thing I do is store my Google API key and Alpha Vantage API key in Colab’s secret storage.
-
-The Google API key allows me to connect with the Gemini model, which is Google’s powerful generative AI model used for understanding and generating text (and even handling multimodal tasks like images or code).
-
-The Alpha Vantage API key, on the other hand, helps me access real-time and historical stock market data directly from the Alpha Vantage website. This is essential for building finance-related tools that can fetch or analyse stock prices.
+    The first thing I do is store my Google API key and Alpha Vantage API key in Colab’s secret storage.
+    The Google API key allows me to connect with the Gemini model, which is Google’s powerful generative AI model used for understanding and generating text (and  even handling multimodal tasks like images or code).
+    The Alpha Vantage API key, on the other hand, helps me access real-time and historical stock market data directly from the Alpha Vantage website. This is essential for building finance-related tools that can fetch or analyse stock prices.
 
 By storing them securely in Colab’s secrets, I ensure that my keys aren’t exposed publicly in the notebook code — keeping my credentials private and safe.
 
