@@ -2,7 +2,7 @@
 
 ---
 
-##  **Task 3: RAG - Part 1 (Basic Document QA)**
+##  **Task 3 & 4: RAG - (Basic Document QA) + (Memory + Multi-step Retrieval)**
 
 ###  **Objective**
 Build a system that can **answer questions from your own uploaded documents** using a combination of embeddings and generative AI.
