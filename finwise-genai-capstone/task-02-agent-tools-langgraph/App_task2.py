@@ -1,6 +1,7 @@
 import os
 import streamlit as st
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.llms import HuggingFacePipeline
+from transformers import pipeline
 from langgraph.prebuilt import create_react_agent
 from langchain_core.tools import tool
 from langchain_experimental.utilities.python import PythonREPL
@@ -59,8 +60,10 @@ with st.sidebar:
 def load_api_keys():
     try:
         # Load Google API Key
-        google_api_key = st.secrets["GOOGLE_API_KEY"]
-        os.environ["GOOGLE_API_KEY"] = google_api_key # Set as environment variable for LangChain
+        # google_api_key = st.secrets["GOOGLE_API_KEY"]
+        # os.environ["GOOGLE_API_KEY"] = google_api_key # Set as environment variable for LangChain
+        HUGGINGFACEHUB_API_TOKEN = st.secrets["HF_TOKEN"]
+        os.environ["HUGGINGFACEHUB_API_TOKEN"] = HUGGINGFACEHUB_API_TOKEN
 
         # Load Alpha Vantage Key (optional)
         alpha_vantage_key = st.secrets.get('ALPHA_VANTAGE_KEY') # Use .get() for optional keys
@@ -82,11 +85,16 @@ def load_api_keys():
 GOOGLE_API_KEY, ALPHA_VANTAGE_KEY = load_api_keys()
 
 # --- Initialize Gemini LLM ---
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash",
-    google_api_key=GOOGLE_API_KEY, # Pass the loaded key directly
-    temperature=0.1
+llm = HuggingFaceHub(
+    repo_id="google/flan-t5-base",
+    model_kwargs={
+        "temperature": 0.1,
+        "max_new_tokens": 512
+    }
 )
+
+llm = HuggingFacePipeline(pipeline=hf_pipeline)
+
 
 # --- Define Tools ---
 @tool(return_direct=False)
