@@ -74,7 +74,7 @@ def load_api_keys():
             st.sidebar.warning("⚠️ Alpha Vantage API Key not found. Stock price tool will use simulated data.")
             os.environ["ALPHA_VANTAGE_KEY"] = "" # Ensure it's an empty string if not found
         
-        return google_api_key, alpha_vantage_key
+        return HUGGINGFACEHUB_API_TOKEN, alpha_vantage_key
     except KeyError as e:
         st.sidebar.error(f"❌ Required API Key not found: {e}. Please add it to `.streamlit/secrets.toml`.")
         st.stop() # Stop the app if a critical key is missing
