@@ -83,7 +83,7 @@ GOOGLE_API_KEY, ALPHA_VANTAGE_KEY = load_api_keys()
 
 # --- Initialize Gemini LLM ---
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-pro",
+    model="gemini-2.0-flash",
     google_api_key=GOOGLE_API_KEY, # Pass the loaded key directly
     temperature=0.1
 )
