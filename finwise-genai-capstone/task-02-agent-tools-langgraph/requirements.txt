@@ -1,5 +1,6 @@
 langchain
 langchain-google-genai
+langchain-huggingface
 langgraph
 langchain-community
 langchain-experimental
