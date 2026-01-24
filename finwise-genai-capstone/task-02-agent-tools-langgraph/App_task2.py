@@ -6,6 +6,8 @@ from langgraph.prebuilt import create_react_agent
 from langchain_core.tools import tool
 from langchain_experimental.utilities.python import PythonREPL
 from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_community.llms import HuggingFaceHub
+
 import math
 import requests
 import json
