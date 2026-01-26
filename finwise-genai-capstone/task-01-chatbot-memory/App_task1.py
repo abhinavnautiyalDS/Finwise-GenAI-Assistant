@@ -50,6 +50,10 @@ with st.sidebar:
     - Powered by Mistral-7B-Instruct-v0.3 + ChatHuggingFace wrapper  
     - Built for financial Q&A  
     """)
+    # Add inside with st.sidebar:
+    st.write("HF Token loaded:", "Yes" if hf_token and len(hf_token) > 10 else "No / Empty")
+    st.write("Token prefix:", hf_token[:10] if hf_token else "None")
+
 
 # --------------------------------------------------
 # LOAD HUGGING FACE TOKEN
