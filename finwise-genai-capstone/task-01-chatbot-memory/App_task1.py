@@ -75,7 +75,7 @@ def load_llm():
         max_new_tokens=512,
         # Important additions for stability & chat behavior on free tier
         streaming=False,                    # Avoids common streaming bugs / partial responses
-        # task="text-generation",           # Usually auto-detected, but safe to include
+        task="conversational",           # Usually auto-detected, but safe to include
       
     )
 llm = load_llm()
