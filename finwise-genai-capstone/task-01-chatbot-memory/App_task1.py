@@ -5,11 +5,12 @@
 # ===============================
 
 import streamlit as st
-from langchain.chains.conversation.base import ConversationChain
-from langchain.memory.buffer import ConversationBufferMemory
-
 
 from langchain_community.llms import HuggingFaceHub
+from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
 
 # --------------------------------------------------
 # PAGE CONFIG
