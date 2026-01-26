@@ -39,6 +39,14 @@ st.markdown("""
 # --------------------------------------------------
 st.title("💰 Financial Chatbot with Memory (Hugging Face)")
 
+
+# --------------------------------------------------
+try:
+    hf_token = st.secrets["HUGGINGFACEHUB_API_TOKEN"]
+except KeyError:
+    st.error("Hugging Face API token not found. Please add it to your secrets.toml file.")
+    st.stop()
+
 # --------------------------------------------------
 # SIDEBAR
 # --------------------------------------------------
@@ -57,12 +65,6 @@ with st.sidebar:
 
 # --------------------------------------------------
 # LOAD HUGGING FACE TOKEN
-# --------------------------------------------------
-try:
-    hf_token = st.secrets["HUGGINGFACEHUB_API_TOKEN"]
-except KeyError:
-    st.error("Hugging Face API token not found. Please add it to your secrets.toml file.")
-    st.stop()
 
 # --------------------------------------------------
 # LOAD LLM with ChatHuggingFace wrapper (fixes conversational/task mismatch)
