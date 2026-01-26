@@ -1,11 +1,9 @@
 # ===============================
 # Financial Chatbot with Memory
-# Hugging Face (LATEST – FIXED)
+# Hugging Face (UPDATED & FIXED – Jan 2026)
 # Built by Abhinav Nautiyal
 # ===============================
-
 import streamlit as st
-
 from langchain_huggingface import HuggingFaceEndpoint
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
@@ -26,13 +24,13 @@ st.set_page_config(
 # --------------------------------------------------
 st.markdown("""
 <style>
-.stApp { background-color: #1a1a1a; color: #e0e0e0; }
-h1 { color: #3498db; text-align: center; padding: 20px 0; }
-div[data-testid="chatMessage"] {
-    border-radius: 15px;
-    padding: 10px 15px;
-    margin-bottom: 10px;
-}
+    .stApp { background-color: #1a1a1a; color: #e0e0e0; }
+    h1 { color: #3498db; text-align: center; padding: 20px 0; }
+    div[data-testid="stChatMessage"] {
+        border-radius: 15px;
+        padding: 10px 15px;
+        margin-bottom: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -47,10 +45,10 @@ st.title("💰 Financial Chatbot with Memory (Hugging Face)")
 with st.sidebar:
     st.header("About This Chatbot")
     st.markdown("""
-    - Uses **Hugging Face Inference API**
-    - Memory-based conversation
-    - LangChain latest architecture
-    - Assignment ready
+    - Uses **Hugging Face Inference API** (free tier)  
+    - Maintains conversation memory  
+    - Powered by Mistral-7B-Instruct (stable & capable)  
+    - Built for financial Q&A  
     """)
 
 # --------------------------------------------------
@@ -59,34 +57,30 @@ with st.sidebar:
 try:
     hf_token = st.secrets["HUGGINGFACEHUB_API_TOKEN"]
 except KeyError:
-    st.error("Hugging Face token not found. Add it in secrets.toml")
+    st.error("Hugging Face API token not found. Please add it to your secrets.toml file.")
     st.stop()
 
 # --------------------------------------------------
-# LOAD LLM (CORRECT WAY)
+# LOAD LLM (reliable model & settings)
 # --------------------------------------------------
-
 @st.cache_resource
 def load_llm():
     return HuggingFaceEndpoint(
-        repo_id="meta-llama/Llama-3.2-3B-Instruct",
+        repo_id="mistralai/Mistral-7B-Instruct-v0.3",
         huggingfacehub_api_token=hf_token,
         temperature=0.7,
         max_new_tokens=512,
-        # Important additions for stability & chat behavior on free tier
-        streaming=False,                    # Avoids common streaming bugs / partial responses
-        task="conversational"        # Usually auto-detected, but safe to include
+        streaming=False,                # Prevents partial/truncated answers
     )
+
 llm = load_llm()
-
-
 
 # --------------------------------------------------
 # PROMPT TEMPLATE
 # --------------------------------------------------
 prompt = ChatPromptTemplate.from_messages(
     [
-        ("system", "You are a helpful financial assistant."),
+        ("system", "You are a helpful, accurate and professional financial assistant. Answer clearly, concisely and factually. If unsure, say so."),
         MessagesPlaceholder(variable_name="history"),
         ("human", "{input}")
     ]
@@ -99,7 +93,6 @@ chain = prompt | llm
 # --------------------------------------------------
 if "store" not in st.session_state:
     st.session_state.store = {}
-
 
 def get_session_history(session_id: str):
     if session_id not in st.session_state.store:
@@ -124,27 +117,51 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # --------------------------------------------------
-# USER INPUT
+# USER INPUT + PROCESSING
 # --------------------------------------------------
 user_input = st.chat_input("Ask your financial question...")
 
 if user_input:
+    # Display user message immediately
     st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    # Limit history length to prevent token overflow & timeouts (very important on free tier)
+    MAX_TURNS = 10  # ≈ last 5 user + 5 assistant messages
+    if len(st.session_state.messages) > MAX_TURNS * 2:
+        st.session_state.messages = st.session_state.messages[-MAX_TURNS * 2 :]
 
     with st.spinner("Thinking..."):
-        response = conversation.invoke(
-            {"input": user_input},
-            config={"configurable": {"session_id": "user_1"}}
-        )
+        try:
+            response = conversation.invoke(
+                {"input": user_input},
+                config={"configurable": {"session_id": "user_1"}}
+            )
+            reply = response.content.strip()
+        except Exception as e:
+            error_str = str(e).lower()
+            if "rate limit" in error_str or "429" in error_str:
+                reply = "⚠️ Rate limit reached on free Hugging Face tier. Please wait 1–2 minutes and try again."
+            elif "token" in error_str or "auth" in error_str:
+                reply = "⚠️ Authentication issue with Hugging Face. Check your API token in secrets.toml."
+            else:
+                reply = f"⚠️ Sorry, something went wrong: {str(e)}\n\nPlease try rephrasing or wait a moment."
 
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": response.content
-    })
+    # Display assistant response
+    st.session_state.messages.append({"role": "assistant", "content": reply})
+    with st.chat_message("assistant"):
+        st.markdown(reply)
 
+    # Force rerun to update UI cleanly
     st.rerun()
 
 # --------------------------------------------------
 # FOOTER
 # --------------------------------------------------
-st.markdown("<center>Built by Abhinav Nautiyal</center>", unsafe_allow_html=True)
+st.markdown(
+    "<center style='color: #888; margin-top: 40px;'>"
+    "Built by Abhinav Nautiyal | Powered by Mistral-7B-Instruct via Hugging Face"
+    "</center>",
+    unsafe_allow_html=True
+)
