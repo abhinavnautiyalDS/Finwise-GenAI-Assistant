@@ -1,19 +1,19 @@
 import os
+import tempfile
 import streamlit as st
 import google.generativeai as genai
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.chains.summarize import load_summarize_chain
-from langchain_core.documents import Document
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_core.prompts import PromptTemplate
-from langchain.prompts import PromptTemplate as LangchainPromptTemplate
-from packaging import version
-import langchain
-import tempfile
-import requests # Import requests for N8N webhook
+import requests
 
-# Page configuration for a clean, wide layout
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
+
+
+# =====================================================
+# Page configuration
+# =====================================================
 st.set_page_config(
     page_title="Financial Document Summarizer",
     page_icon="💼",
@@ -21,258 +21,264 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better visibility and aesthetics
+# =====================================================
+# Custom CSS (UNCHANGED)
+# =====================================================
 st.markdown("""
-    <style>
-    .main-header {
-        font-size: 3rem;
-        color: #1f77b4;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .summary-box {
-        background-color: #f0f8ff;
-        color: #000000;  /* <-- Set text color to black */
-        padding: 1rem;
-        border-radius: 10px;
-        border-left: 5px solid #1f77b4;
-        white-space: pre-wrap;  /* Preserve line breaks */
-    }
-    .stExpander > div > div > div {
-        background-color: #fafafa;
-    }
-    </style>
+<style>
+.main-header {
+    font-size: 3rem;
+    color: #1f77b4;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+.summary-box {
+    background-color: #f0f8ff;
+    color: #000000;
+    padding: 1rem;
+    border-radius: 10px;
+    border-left: 5px solid #1f77b4;
+    white-space: pre-wrap;
+}
+.stExpander > div > div > div {
+    background-color: #fafafa;
+}
+</style>
 """, unsafe_allow_html=True)
 
-# Retrieve API key from Streamlit secrets
+# =====================================================
+# API KEY
+# =====================================================
 try:
-    api_key = st.secrets['GOOGLE_API_KEY']
+    api_key = st.secrets["GOOGLE_API_KEY"]
 except KeyError:
-    st.error("🚨 Please set `GOOGLE_API_KEY` in your Streamlit secrets file (.streamlit/secrets.toml).")
+    st.error("🚨 Please set GOOGLE_API_KEY in Streamlit secrets.")
     st.stop()
 
-# Configure environment and GenAI
-os.environ['GOOGLE_API_KEY'] = api_key
+os.environ["GOOGLE_API_KEY"] = api_key
 genai.configure(api_key=api_key)
 
-# Sidebar for options
+# =====================================================
+# Sidebar
+# =====================================================
 st.sidebar.header("⚙️ Summarization Options")
+
 temperature = st.sidebar.slider("Temperature", 0.0, 1.0, 0.3, 0.1)
+
 chain_type = st.sidebar.selectbox(
     "Chain Type",
     options=["stuff", "map_reduce", "refine"],
-    help="stuff: Fast for short docs; map_reduce: For long docs; refine: High-quality coherent summaries."
+    help="UI preserved (internally modern LCEL is used)"
 )
+
 verbose = st.sidebar.checkbox("Verbose (logs in console)", value=False)
 
-# Initialize LLM
+# =====================================================
+# LLM
+# =====================================================
 @st.cache_resource
 def get_llm(temp):
-    return ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=temp)
+    return ChatGoogleGenerativeAI(
+        model="gemini-2.0-flash",
+        temperature=temp
+    )
 
 llm = get_llm(temperature)
 
-# Prompt templates
-summary_prompt_template = """Write a concise summary of the following financial document, focusing on key financial figures, strategic developments, and future outlook:
+# =====================================================
+# PROMPTS
+# =====================================================
+summary_prompt = PromptTemplate(
+    template="""
+Summarize the following financial document.
+Focus on:
+- key financial figures
+- strategy
+- future outlook
 
-"{text}"
-
-CONCISE SUMMARY:"""
-
-refine_prompt_template = """Your job is to produce a final summary of the provided financial document.
-We have an existing summary up to a certain point: {existing_answer}
-We have the opportunity to refine the existing summary (only if needed) with some more context below:
-------------
+TEXT:
 {text}
-------------
-Given the new context, refine the original summary to include any new key financial figures, strategic developments, or future outlook.
-If the context isn't useful, return the original summary.
-REFINED SUMMARY:"""
+""",
+    input_variables=["text"],
+)
 
-# Document loading function
+refine_prompt = PromptTemplate(
+    template="""
+Existing summary:
+{existing_answer}
+
+New context:
+{text}
+
+Refine the summary if needed.
+If not useful, return the original summary.
+""",
+    input_variables=["existing_answer", "text"],
+)
+
+output_parser = StrOutputParser()
+
+summary_chain = summary_prompt | llm | output_parser
+refine_chain = refine_prompt | llm | output_parser
+
+# =====================================================
+# LOAD DOCUMENTS
+# =====================================================
 @st.cache_data
 def load_documents(uploaded_files):
-    raw_documents = []
-    for uploaded_file in uploaded_files:
-        # Create a temporary file to store the uploaded content
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as temp_file:
-            temp_file.write(uploaded_file.read())
-            temp_file_path = temp_file.name
-        
-        try:
-            # Load based on file type
-            if uploaded_file.type == "application/pdf":
-                loader = PyPDFLoader(temp_file_path)
-                docs = loader.load()
-                raw_documents.extend(docs)
-                st.info(f"✅ Loaded {len(docs)} pages from PDF: {uploaded_file.name}")
-            elif uploaded_file.type == "text/plain":
-                loader = TextLoader(temp_file_path)
-                docs = loader.load()
-                raw_documents.extend(docs)
-                st.info(f"✅ Loaded text from TXT: {uploaded_file.name}")
-            else:
-                st.warning(f"⚠️ Unsupported file type: {uploaded_file.type} for {uploaded_file.name}")
-        finally:
-            # Clean up temporary file
-            os.unlink(temp_file_path)
-    
-    return raw_documents
+    docs = []
 
-# Text splitter
+    for file in uploaded_files:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(file.read())
+            path = tmp.name
+
+        try:
+            if file.type == "application/pdf":
+                docs.extend(PyPDFLoader(path).load())
+            elif file.type == "text/plain":
+                docs.extend(TextLoader(path).load())
+        finally:
+            os.unlink(path)
+
+    return docs
+
+# =====================================================
+# SPLIT DOCUMENTS
+# =====================================================
 @st.cache_data
-def split_documents(raw_documents):
-    text_splitter = RecursiveCharacterTextSplitter(
+def split_documents(raw_docs):
+    splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=100,
-        length_function=len,
-        add_start_index=True,
     )
-    return text_splitter.split_documents(raw_documents)
+    return splitter.split_documents(raw_docs)
 
-# Summarization function
-def summarize_documents(docs, chain_type, llm, verbose=False):
+# =====================================================
+# SUMMARIZATION LOGIC (MODERN)
+# =====================================================
+def summarize_documents(docs, chain_type):
     if not docs:
-        return "No documents provided for summarization."
+        return "No documents provided."
 
-    summary_prompt = PromptTemplate(template=summary_prompt_template, input_variables=["text"])
+    chunks = [doc.page_content for doc in docs]
 
+    # ---------- STUFF ----------
     if chain_type == "stuff":
-        total_length = sum(len(doc.page_content) for doc in docs)
-        if total_length > 50000:
-            st.warning("📄 Document is very large; the model may truncate content.")
-        chain = load_summarize_chain(
-            llm,
-            chain_type="stuff",
-            prompt=summary_prompt,
-            verbose=verbose
-        )
+        combined = "\n\n".join(chunks)
+        return summary_chain.invoke({"text": combined})
 
-    elif chain_type == "map_reduce":
-        combine_prompt = PromptTemplate(template=summary_prompt_template, input_variables=["text"])
-        if version.parse(langchain.__version__) >= version.parse("0.2.0"):
-            chain = load_summarize_chain(
-                llm,
-                chain_type="map_reduce",
-                map_prompt=summary_prompt,
-                combine_prompt=combine_prompt,
-                combine_document_variable_name="text",
-                verbose=verbose
-            )
-        else:
-            chain = load_summarize_chain(
-                llm,
-                chain_type="map_reduce",
-                map_prompt=summary_prompt,
-                reduce_prompt=combine_prompt,
-                combine_document_variable_name="text",
-                verbose=verbose
-            )
+    # ---------- MAP REDUCE ----------
+    if chain_type == "map_reduce":
+        partials = []
+        for chunk in chunks:
+            partials.append(summary_chain.invoke({"text": chunk}))
 
-    elif chain_type == "refine":
-        initial_prompt = PromptTemplate(template=summary_prompt_template, input_variables=["text"])
-        refine_prompt = PromptTemplate(template=refine_prompt_template, input_variables=["existing_answer", "text"])
-        chain = load_summarize_chain(
-            llm,
-            chain_type="refine",
-            question_prompt=initial_prompt,
-            refine_prompt=refine_prompt,
-            verbose=verbose
-        )
-    else:
-        return "Invalid chain_type."
+        combined = "\n\n".join(partials)
+        return summary_chain.invoke({"text": combined})
 
-    try:
-        result = chain.invoke({"input_documents": docs}, return_only_outputs=True)
-        return result['output_text']
-    except Exception as e:
-        return f"❌ Error during summarization: {str(e)}"
+    # ---------- REFINE ----------
+    if chain_type == "refine":
+        summary = summary_chain.invoke({"text": chunks[0]})
 
-# Main content
+        for chunk in chunks[1:]:
+            summary = refine_chain.invoke({
+                "existing_answer": summary,
+                "text": chunk
+            })
+
+        return summary
+
+    return "Invalid chain type."
+
+
+# =====================================================
+# MAIN UI
+# =====================================================
 st.markdown('<h1 class="main-header">💼 Financial Document Summarizer</h1>', unsafe_allow_html=True)
-st.write("Upload PDF or TXT financial documents to generate a concise summary highlighting key financial figures, strategic developments, and future outlook.")
 
-# File uploader
+st.write(
+    "Upload PDF or TXT financial documents to generate a concise summary "
+    "highlighting key financial figures, strategic developments, and future outlook."
+)
+
 uploaded_files = st.file_uploader(
     "Choose files",
-    type=['pdf', 'txt'],
-    accept_multiple_files=True,
-    help="Supports multiple files; content will be combined."
+    type=["pdf", "txt"],
+    accept_multiple_files=True
 )
 
 if uploaded_files:
+
     with st.spinner("Loading documents..."):
         raw_documents = load_documents(uploaded_files)
-    
+
     if raw_documents:
+
         col1, col2 = st.columns([3, 1])
+
         with col1:
-            st.success(f"✅ Loaded {len(raw_documents)} pages/documents from {len(uploaded_files)} file(s).")
+            st.success(
+                f"✅ Loaded {len(raw_documents)} pages from {len(uploaded_files)} file(s)."
+            )
+
         with col2:
-            if st.button("🔄 Reprocess", key="reprocess"):
+            if st.button("🔄 Reprocess"):
                 st.rerun()
-        
+
         with st.spinner("Splitting into chunks..."):
             docs = split_documents(raw_documents)
-        
-        st.info(f"📝 Split into {len(docs)} text chunks for processing.")
-        
-        # Preview
-        with st.expander("👀 Preview first 3 chunks", expanded=False):
+
+        st.info(f"📝 Split into {len(docs)} text chunks.")
+
+        with st.expander("👀 Preview first 3 chunks"):
             for i, doc in enumerate(docs[:3]):
-                with st.container():
-                    st.write(f"**Chunk {i+1}:**")
-                    st.text(doc.page_content[:300] + "..." if len(doc.page_content) > 300 else doc.page_content)
-        
-        # Summarize button
+                st.text(doc.page_content[:300] + "...")
+
         if st.button("🚀 Generate Summary", type="primary"):
-            with st.spinner(f"Summarizing with '{chain_type}' chain... This may take a while for long documents."):
-                summary = summarize_documents(docs, chain_type, llm, verbose)
-            
+
+            with st.spinner(f"Summarizing using '{chain_type}' strategy..."):
+                summary = summarize_documents(docs, chain_type)
+
             st.subheader("📊 Document Summary")
-            st.markdown(f'<div class="summary-box"><p>{summary}</p></div>', unsafe_allow_html=True)
-            
-            # --- N8N Workflow Trigger ---
-            # Get N8N Webhook URL from environment variables or Streamlit secrets
-            # You should set this in .streamlit/secrets.toml: N8N_SUMMARY_WEBHOOK_URL="your_n8n_webhook_url"
-            N8N_WEBHOOK_URL = os.environ.get("N8N_SUMMARY_WEBHOOK_URL", st.secrets.get("N8N_SUMMARY_WEBHOOK_URL"))
-            
-            if N8N_WEBHOOK_URL: # Check if a URL is provided
+            st.markdown(
+                f'<div class="summary-box">{summary}</div>',
+                unsafe_allow_html=True
+            )
+
+            # ===============================
+            # N8N WEBHOOK
+            # ===============================
+            N8N_WEBHOOK_URL = os.environ.get(
+                "N8N_SUMMARY_WEBHOOK_URL",
+                st.secrets.get("N8N_SUMMARY_WEBHOOK_URL", None)
+            )
+
+            if N8N_WEBHOOK_URL:
                 try:
-                    # Prepare payload with relevant summary data
-                    n8n_payload = {
+                    payload = {
                         "event": "document_summarized",
                         "summary": summary,
-                        "chain_type_used": chain_type,
-                        "document_names": [f.name for f in uploaded_files],
-                        "num_chunks": len(docs),
-                        "timestamp": os.getenv("CURRENT_TIMESTAMP", "N/A") # Example of dynamic data
+                        "chain_type": chain_type,
+                        "documents": [f.name for f in uploaded_files],
+                        "chunks": len(docs),
                     }
-                    response = requests.post(N8N_WEBHOOK_URL, json=n8n_payload, timeout=10) # 10-second timeout
-                    
-                    if response.status_code == 200:
-                        st.toast("N8N workflow triggered successfully!", icon="✅")
-                    else:
-                        st.toast(f"N8N workflow trigger failed: HTTP {response.status_code}", icon="⚠️")
-                        st.info(f"N8N Response: {response.text}") # Show n8n's response for debugging
-                except requests.exceptions.Timeout:
-                    st.toast("N8N workflow trigger timed out.", icon="⚠️")
-                except requests.exceptions.RequestException as e:
-                    st.toast(f"N8N request error: {e}", icon="⚠️")
-                except Exception as e:
-                    st.toast(f"Unexpected N8N error: {e}", icon="⚠️")
-            else:
-                st.sidebar.info("N8N Webhook URL not configured. Skipping workflow trigger.")
-            # --- End N8N Workflow Trigger ---
 
-            # Download summary
+                    requests.post(N8N_WEBHOOK_URL, json=payload, timeout=10)
+                    st.toast("N8N workflow triggered ✅")
+
+                except Exception as e:
+                    st.toast(f"N8N error: {e}")
+
             st.download_button(
-                label="💾 Download Summary",
+                "💾 Download Summary",
                 data=summary,
                 file_name="financial_summary.txt",
                 mime="text/plain"
             )
+
     else:
-        st.warning("⚠️ No valid content loaded from the uploaded files.")
+        st.warning("⚠️ No readable content found.")
+
 else:
-    st.info("👆 Please upload at least one PDF or TXT file to get started.")
+    st.info("👆 Please upload at least one PDF or TXT file.")
