@@ -64,7 +64,7 @@ def load_api_keys():
         # Load Google API Key
         # google_api_key = st.secrets["GOOGLE_API_KEY"]
         # os.environ["GOOGLE_API_KEY"] = google_api_key # Set as environment variable for LangChain
-        HUGGINGFACEHUB_API_TOKEN = st.secrets["HF_TOKEN"]
+        HUGGINGFACEHUB_API_TOKEN = st.secrets["HUGGINGFACEHUB_API_TOKEN"]
         os.environ["HUGGINGFACEHUB_API_TOKEN"] = HUGGINGFACEHUB_API_TOKEN
 
         # Load Alpha Vantage Key (optional)
