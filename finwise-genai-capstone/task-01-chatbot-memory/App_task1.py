@@ -1,12 +1,12 @@
 # ===============================
 # Financial Chatbot with Memory
-# Hugging Face (LangChain v0.2+)
+# Hugging Face (LATEST – FIXED)
 # Built by Abhinav Nautiyal
 # ===============================
 
 import streamlit as st
 
-from langchain_community.llms import HuggingFaceHub
+from langchain_huggingface import HuggingFaceEndpoint
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -47,10 +47,10 @@ st.title("💰 Financial Chatbot with Memory (Hugging Face)")
 with st.sidebar:
     st.header("About This Chatbot")
     st.markdown("""
-    - Uses **Hugging Face LLM**
+    - Uses **Hugging Face Inference API**
     - Memory-based conversation
     - LangChain latest architecture
-    - No Gemini / no Google API
+    - Assignment ready
     """)
 
 # --------------------------------------------------
@@ -63,17 +63,15 @@ except KeyError:
     st.stop()
 
 # --------------------------------------------------
-# LOAD LLM
+# LOAD LLM (CORRECT WAY)
 # --------------------------------------------------
 @st.cache_resource
 def load_llm():
-    return HuggingFaceHub(
+    return HuggingFaceEndpoint(
         repo_id="HuggingFaceH4/zephyr-7b-beta",
         huggingfacehub_api_token=hf_token,
-        model_kwargs={
-            "temperature": 0.7,
-            "max_new_tokens": 512
-        }
+        temperature=0.7,
+        max_new_tokens=512,
     )
 
 llm = load_llm()
