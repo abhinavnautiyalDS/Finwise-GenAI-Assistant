@@ -1,7 +1,17 @@
-streamlit
-langchain-core
-langchain-community
-langchain-huggingface
-huggingface-hub
-transformers
-torch
+# Core dependencies
+streamlit>=1.38.0          # Latest stable as of Jan 2026
+langchain>=0.3.0           # Modern LangChain core
+langchain-core>=0.3.0
+langchain-huggingface>=0.1.0  # HuggingFaceEndpoint & ChatHuggingFace
+
+# Hugging Face ecosystem
+huggingface_hub>=0.25.0    # Required for Inference API client
+transformers>=4.44.0       # Often pulled indirectly, but good to pin
+
+# Utility (optional but helpful for stability)
+python-dotenv>=1.0.0       # If you ever use .env locally
+tiktoken>=0.7.0            # Optional: for better token counting if you add it later
+
+# For deployment compatibility (Streamlit Cloud / HF Spaces usually have these)
+numpy>=1.26.0
+pandas>=2.2.0
