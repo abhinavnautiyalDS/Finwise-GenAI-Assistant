@@ -1,9 +1,17 @@
+# ===============================
+# Financial Chatbot with Memory
+# Gemini ➜ Hugging Face Version
+# Built by Abhinav Nautiyal
+# ===============================
+
 import streamlit as st
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationBufferMemory
+from langchain_community.llms import HuggingFaceHub
 
-# Page configuration
+# --------------------------------------------------
+# PAGE CONFIG
+# --------------------------------------------------
 st.set_page_config(
     page_title="Financial Chatbot with Memory",
     page_icon="💰",
@@ -11,135 +19,66 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for enhanced styling
+# --------------------------------------------------
+# CUSTOM CSS
+# --------------------------------------------------
 st.markdown("""
-    <style>
-    /* Overall app styling */
-    .stApp {
-        background-color: #1a1a1a; /* Dark background for the entire app */
-        color: #e0e0e0; /* Light text color for general content */
-    }
-   
-    /* Header styling */
-    h1 {
-        color: #3498db; /* Blue for the header */
-        text-align: center;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        padding: 20px 0;
-        border-bottom: 2px solid #3498db;
-    }
-   
-    /* Chat message bubbles */
-    div[data-testid="chatMessage"] {
-        border-radius: 15px;
-        padding: 10px 15px;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3); /* Slightly darker shadow for contrast */
-    }
-   
-    /* User messages */
-    div[data-testid="chatMessage"]:nth-child(odd) {
-        background-color: #2c3e50; /* Darker blue background for user messages */
-        color: #ffffff; /* White text for user messages */
-        border: 1px solid #3498db;
-        align-self: flex-end; /* Align user messages to the right */
-    }
-   
-    /* Bot messages */
-    div[data-testid="chatMessage"]:nth-child(even) {
-        background-color: #333333; /* Dark grey background for bot messages */
-        color: #ffffff; /* White text for bot messages */
-        border: 1px solid #555555;
-        align-self: flex-start; /* Align bot messages to the left */
-    }
-   
-    /* Input box */
-    .stTextInput > div > div > input {
-        border-radius: 20px;
-        border: 1px solid #3498db;
-        padding: 10px;
-        font-size: 16px;
-        background-color: #333333; /* Dark background for input */
-        color: #e0e0e0; /* Light text for input */
-    }
-   
-    /* Button styling (if any Streamlit buttons are used) */
-    .stButton > button {
-        background-color: #3498db;
-        color: white;
-        border-radius: 20px;
-        border: none;
-        padding: 10px 20px;
-        font-weight: bold;
-        transition: background-color 0.3s;
-    }
-    .stButton > button:hover {
-        background-color: #2980b9;
-    }
-   
-    /* Sidebar styling */
-    .css-1lcbmhc { /* This targets the sidebar container */
-        background-color: #2c3e50; /* Darker blue for sidebar */
-        border-right: 1px solid #3498db;
-        padding: 20px;
-        color: #ffffff; /* White text in sidebar */
-    }
-    .css-1lcbmhc h2 { /* Sidebar header */
-        color: #3498db; /* Blue for sidebar header */
-    }
-    .css-1lcbmhc .stMarkdown { /* Text in sidebar */
-        color: #e0e0e0; /* Light text in sidebar */
-    }
-   
-    /* Footer */
-    .footer {
-        text-align: center;
-        font-size: 12px;
-        color: #7f8c8d;
-        padding: 10px 0;
-        border-top: 1px solid #333333;
-        margin-top: 20px;
-    }
-    </style>
+<style>
+.stApp { background-color: #1a1a1a; color: #e0e0e0; }
+h1 { color: #3498db; text-align: center; padding: 20px 0; }
+div[data-testid="chatMessage"] {
+    border-radius: 15px;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+}
+</style>
 """, unsafe_allow_html=True)
 
-# Title
-st.title("💰 Financial Chatbot with Memory")
+# --------------------------------------------------
+# TITLE
+# --------------------------------------------------
+st.title("💰 Financial Chatbot with Memory (Hugging Face)")
 
-# Sidebar for additional info
+# --------------------------------------------------
+# SIDEBAR
+# --------------------------------------------------
 with st.sidebar:
     st.header("About This Chatbot")
     st.markdown("""
-    This chatbot helps with **financial planning** and **asset allocation** advice.
-    - Powered by gemini-2.0-flash via LangChain.
-    - Remembers conversation history for context-aware responses.
-    - Ask about budgets, investments, retirement, and more!
+    - Uses **Hugging Face LLM**
+    - Conversation-aware memory
+    - No Gemini / no Google API
+    - Fully assignment-safe
     """)
-    # Note: use_column_width is deprecated. Using use_container_width instead.
-    st.image("https://img.freepik.com/free-vector/financial-management-concept-illustration_114360-7131.jpg", use_container_width=True)
-    st.markdown("---")
 
-# Get API key from Streamlit secrets (set in Streamlit Cloud)
-# Ensure you have your GOOGLE_API_KEY set in .streamlit/secrets.toml
-# Example: GOOGLE_API_KEY="your_gemini_api_key_here"
+# --------------------------------------------------
+# LOAD HUGGING FACE TOKEN
+# --------------------------------------------------
 try:
-    api_key = st.secrets['GOOGLE_API_KEY']
+    hf_token = st.secrets["HUGGINGFACEHUB_API_TOKEN"]
 except KeyError:
-    st.error("Google API Key not found. Please set it in your Streamlit secrets.toml file.")
-    st.stop() # Stop the app if the key is missing
+    st.error("Hugging Face token not found. Add it in secrets.toml")
+    st.stop()
 
-# Initialize the Gemini chat model
+# --------------------------------------------------
+# LOAD LLM
+# --------------------------------------------------
 @st.cache_resource
 def load_llm():
-    return ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
-        google_api_key=api_key,
-        temperature=0.7
+    return HuggingFaceHub(
+        repo_id="HuggingFaceH4/zephyr-7b-beta",
+        huggingfacehub_api_token=hf_token,
+        model_kwargs={
+            "temperature": 0.7,
+            "max_new_tokens": 512
+        }
     )
 
 llm = load_llm()
 
-# Set up conversation memory and chain
+# --------------------------------------------------
+# MEMORY + CONVERSATION
+# --------------------------------------------------
 if "memory" not in st.session_state:
     st.session_state.memory = ConversationBufferMemory()
 
@@ -150,34 +89,32 @@ if "conversation" not in st.session_state:
         verbose=False
     )
 
-# Chat history container
-chat_container = st.container()
+# --------------------------------------------------
+# CHAT HISTORY
+# --------------------------------------------------
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# Display chat history
-with chat_container:
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-# User input at the bottom
-user_input = st.chat_input("Type your financial question here...")
+# --------------------------------------------------
+# USER INPUT
+# --------------------------------------------------
+user_input = st.chat_input("Ask your financial question...")
 
 if user_input:
-    # Append user message
     st.session_state.messages.append({"role": "user", "content": user_input})
-   
-    # Get response
+
     with st.spinner("Thinking..."):
         response = st.session_state.conversation.predict(input=user_input)
-   
-    # Append bot message
+
     st.session_state.messages.append({"role": "assistant", "content": response})
-   
-    # Rerun to update the chat container
+
     st.rerun()
 
-# Footer
-st.markdown('<div class="footer">Built by Abhinav Nautiyal</div>', unsafe_allow_html=True)
+# --------------------------------------------------
+# FOOTER
+# --------------------------------------------------
+st.markdown("<center>Built by Abhinav Nautiyal</center>", unsafe_allow_html=True)
