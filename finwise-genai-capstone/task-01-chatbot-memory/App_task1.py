@@ -76,9 +76,7 @@ def load_llm():
         # Important additions for stability & chat behavior on free tier
         streaming=False,                    # Avoids common streaming bugs / partial responses
         # task="text-generation",           # Usually auto-detected, but safe to include
-        model_kwargs={
-            "max_length": 2048,             # Helps prevent truncation on longer chats
-        }
+      
     )
 llm = load_llm()
 
