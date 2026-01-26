@@ -65,16 +65,18 @@ except KeyError:
 # --------------------------------------------------
 # LOAD LLM (CORRECT WAY)
 # --------------------------------------------------
+
 @st.cache_resource
 def load_llm():
     return HuggingFaceEndpoint(
-        repo_id="HuggingFaceH4/zephyr-7b-beta",
+        repo_id="google/flan-t5-large",
         huggingfacehub_api_token=hf_token,
         temperature=0.7,
         max_new_tokens=512,
     )
-
 llm = load_llm()
+
+
 
 # --------------------------------------------------
 # PROMPT TEMPLATE
