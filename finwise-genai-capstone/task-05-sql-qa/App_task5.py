@@ -10,16 +10,16 @@ from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
-from langchain.agents import create_sql_agent               # ← core langchain
+from langchain.agents import create_sql_agent
 from langchain.callbacks import StreamlitCallbackHandler
 
-# ── Configuration ────────────────────────────────────────────────────────────
+# ── Config ───────────────────────────────────────────────────────────────────
 DB_FILE = "financial_data.db"
 GITHUB_DB_URL = "https://github.com/abhinavnautiyalDS/Finwise-GenAI-Assistant/raw/main/finwise-genai-capstone/task-05-sql-qa/financial_data.db"
 
 st.set_page_config(page_title="💰 Financial Data QA System", layout="wide")
 st.title("💰 Financial Data Question Answering System")
-st.markdown("Ask natural language questions about clients & investments.")
+st.markdown("Clients & investments ke baare mein natural language mein poochho.")
 
 # ── Load Google API Key ──────────────────────────────────────────────────────
 @st.cache_resource
@@ -30,28 +30,28 @@ def load_api_key():
         genai.configure(api_key=key)
         return key
     except KeyError:
-        st.error("GOOGLE_API_KEY missing in secrets.toml")
+        st.error("GOOGLE_API_KEY secrets.toml mein nahi hai")
         st.stop()
     except Exception as e:
-        st.error(f"API key error: {e}")
+        st.error(f"API key load fail: {e}")
         st.stop()
 
 load_api_key()
 
-# ── Download DB from GitHub if missing ───────────────────────────────────────
+# ── DB Download if missing ───────────────────────────────────────────────────
 if not os.path.exists(DB_FILE):
-    st.info("Downloading financial_data.db from GitHub...")
+    st.info("DB GitHub se download ho raha hai...")
     try:
         r = requests.get(GITHUB_DB_URL, timeout=15)
         r.raise_for_status()
         with open(DB_FILE, "wb") as f:
             f.write(r.content)
-        st.success("Database downloaded ✓")
+        st.success("DB download ho gaya ✓")
     except Exception as e:
-        st.error(f"DB download failed: {e}")
+        st.error(f"DB download fail: {e}")
         st.stop()
 else:
-    st.info("Using cached database.")
+    st.info("Local DB use kar raha hoon.")
 
 # ── Initialize SQL Agent ─────────────────────────────────────────────────────
 @st.cache_resource(ttl=3600)
@@ -62,17 +62,16 @@ def init_sql_agent():
         toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 
         CUSTOM_PROMPT = """
-        You are an expert financial SQL assistant.
-        You have access to these tables:
+        Financial database expert ho tum.
+        Tables:
         - clients(client_id, name, age, risk_profile, portfolio_value)
         - investments(investment_id, client_id, fund_name, amount_invested, date)
 
         Rules:
-        - Convert natural language to correct SQL only
-        - Interpret 'lakh' = 100000, 'crore' = 10000000, 'k' = 1000
-        - Never assume or fabricate data
-        - If no data matches → say "No matching records found"
-        - Return clean, readable answer after query
+        - User question ko accurate SQL mein convert karo
+        - 'lakh' = 100000, 'crore' = 10000000, 'k' = 1000 ko handle karo
+        - Data nahi mila toh "No matching records" bolo
+        - Clear answer do query ke baad
 
         Question: {input}
         """
@@ -81,13 +80,13 @@ def init_sql_agent():
             llm=llm,
             toolkit=toolkit,
             verbose=True,
-            agent_type="openai-tools",  # better with Gemini
+            agent_type="openai-tools",
             handle_parsing_errors=True,
             prefix=CUSTOM_PROMPT.strip()
         )
         return agent
     except Exception as e:
-        st.error(f"Agent init failed: {e}")
+        st.error(f"Agent init fail: {e}")
         return None
 
 agent = init_sql_agent()
@@ -96,20 +95,20 @@ if not agent:
 
 # ── Chat UI ──────────────────────────────────────────────────────────────────
 st.markdown("---")
-st.subheader("Ask about Clients & Investments")
+st.subheader("Sawaal poochho")
 
 if "history" not in st.session_state:
     st.session_state.history = []
 
 user_question = st.text_input(
-    "Your question:",
-    placeholder="e.g. Show clients with high risk and portfolio > 10 lakh"
+    "Sawaal:",
+    placeholder="e.g. High risk clients with portfolio > 10 lakh?"
 )
 
-if st.button("Ask →", type="primary") and user_question.strip():
+if st.button("Jawaab do →", type="primary") and user_question.strip():
     st.session_state.history.append({"role": "user", "content": user_question})
 
-    with st.spinner("Querying database..."):
+    with st.spinner("Database query kar raha hoon..."):
         try:
             callback = StreamlitCallbackHandler(st.container())
             response = agent.invoke(
@@ -119,7 +118,7 @@ if st.button("Ask →", type="primary") and user_question.strip():
             answer = response["output"]
             st.session_state.history.append({"role": "assistant", "content": answer})
 
-            st.subheader("Answer:")
+            st.subheader("Jawaab:")
             st.success(answer)
 
             # N8N webhook (optional)
@@ -136,24 +135,24 @@ if st.button("Ask →", type="primary") and user_question.strip():
                         },
                         timeout=8
                     )
-                    st.toast("N8N triggered ✓", icon="✅")
+                    st.toast("N8N trigger ho gaya ✓", icon="✅")
                 except Exception as e:
-                    st.toast(f"N8N failed: {e}", icon="⚠️")
+                    st.toast(f"N8N fail: {e}", icon="⚠️")
 
         except Exception as e:
-            st.error(f"Query failed: {str(e)}")
+            st.error(f"Query fail: {str(e)}")
 
-# Show history
+# History show karo
 if st.session_state.history:
-    with st.expander("Conversation History", expanded=True):
+    with st.expander("History", expanded=True):
         for msg in st.session_state.history:
-            role = "You" if msg["role"] == "user" else "Agent"
+            role = "Tum" if msg["role"] == "user" else "Agent"
             st.markdown(f"**{role}:** {msg['content']}")
             st.markdown("---")
 
-# ── Database Preview ─────────────────────────────────────────────────────────
+# ── DB Preview ───────────────────────────────────────────────────────────────
 st.markdown("---")
-st.header("Database Preview (first 5 rows)")
+st.header("DB Preview (first 5 rows)")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -163,7 +162,7 @@ with col1:
                 df = pd.read_sql_query("SELECT * FROM clients LIMIT 5", conn)
                 st.dataframe(df)
         except Exception as e:
-            st.error(f"Cannot read clients: {e}")
+            st.error(f"Clients table read fail: {e}")
 
 with col2:
     with st.expander("Investments Table"):
@@ -172,6 +171,6 @@ with col2:
                 df = pd.read_sql_query("SELECT * FROM investments LIMIT 5", conn)
                 st.dataframe(df)
         except Exception as e:
-            st.error(f"Cannot read investments: {e}")
+            st.error(f"Investments table read fail: {e}")
 
-st.caption("Built with Streamlit + LangChain + Gemini • Abhinav Nautiyal • 2026")
+st.caption("Streamlit + LangChain + Gemini • Abhinav Nautiyal • 2026")
