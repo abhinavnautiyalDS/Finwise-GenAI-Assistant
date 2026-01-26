@@ -1,10 +1,10 @@
 # ===============================
 # Financial Chatbot with Memory
-# Hugging Face (UPDATED & FIXED – Jan 2026)
+# Hugging Face – FIXED with ChatHuggingFace wrapper (Jan 2026)
 # Built by Abhinav Nautiyal
 # ===============================
 import streamlit as st
-from langchain_huggingface import HuggingFaceEndpoint
+from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -47,7 +47,7 @@ with st.sidebar:
     st.markdown("""
     - Uses **Hugging Face Inference API** (free tier)  
     - Maintains conversation memory  
-    - Powered by Mistral-7B-Instruct (stable & capable)  
+    - Powered by Mistral-7B-Instruct-v0.3 + ChatHuggingFace wrapper  
     - Built for financial Q&A  
     """)
 
@@ -61,18 +61,20 @@ except KeyError:
     st.stop()
 
 # --------------------------------------------------
-# LOAD LLM (reliable model & settings)
+# LOAD LLM with ChatHuggingFace wrapper (fixes conversational/task mismatch)
 # --------------------------------------------------
 @st.cache_resource
 def load_llm():
-    return HuggingFaceEndpoint(
+    endpoint = HuggingFaceEndpoint(
         repo_id="mistralai/Mistral-7B-Instruct-v0.3",
         huggingfacehub_api_token=hf_token,
         temperature=0.7,
         max_new_tokens=512,
-        task='conversational',
-        streaming=False,                # Prevents partial/truncated answers
+        streaming=False,                # Important for stable full responses
     )
+    
+    # This wrapper uses the correct "conversational" endpoint internally
+    return ChatHuggingFace(llm=endpoint)
 
 llm = load_llm()
 
@@ -123,13 +125,13 @@ for msg in st.session_state.messages:
 user_input = st.chat_input("Ask your financial question...")
 
 if user_input:
-    # Display user message immediately
+    # Display user message
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # Limit history length to prevent token overflow & timeouts (very important on free tier)
-    MAX_TURNS = 10  # ≈ last 5 user + 5 assistant messages
+    # Truncate history to avoid token limits & timeouts (critical on free tier)
+    MAX_TURNS = 10  # Keep roughly last 5 full exchanges
     if len(st.session_state.messages) > MAX_TURNS * 2:
         st.session_state.messages = st.session_state.messages[-MAX_TURNS * 2 :]
 
@@ -145,16 +147,17 @@ if user_input:
             if "rate limit" in error_str or "429" in error_str:
                 reply = "⚠️ Rate limit reached on free Hugging Face tier. Please wait 1–2 minutes and try again."
             elif "token" in error_str or "auth" in error_str:
-                reply = "⚠️ Authentication issue with Hugging Face. Check your API token in secrets.toml."
+                reply = "⚠️ Authentication issue with Hugging Face. Check your API token."
+            elif "not supported" in error_str or "conversational" in error_str:
+                reply = "⚠️ Model endpoint issue detected. The app is using the correct wrapper — try refreshing or wait a minute."
             else:
-                reply = f"⚠️ Sorry, something went wrong: {str(e)}\n\nPlease try rephrasing or wait a moment."
+                reply = f"⚠️ Sorry, something went wrong: {str(e)}\n\nPlease try a simpler question or wait a moment."
 
     # Display assistant response
     st.session_state.messages.append({"role": "assistant", "content": reply})
     with st.chat_message("assistant"):
         st.markdown(reply)
 
-    # Force rerun to update UI cleanly
     st.rerun()
 
 # --------------------------------------------------
