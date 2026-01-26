@@ -69,17 +69,16 @@ with st.sidebar:
 # --------------------------------------------------
 # LOAD LLM with ChatHuggingFace wrapper (fixes conversational/task mismatch)
 # --------------------------------------------------
+
 @st.cache_resource
 def load_llm():
     endpoint = HuggingFaceEndpoint(
-        repo_id="mistralai/Mistral-7B-Instruct-v0.3",
+        repo_id="Qwen/Qwen2.5-7B-Instruct",   # ← Change only this line
         huggingfacehub_api_token=hf_token,
         temperature=0.7,
         max_new_tokens=512,
-        streaming=False,                # Important for stable full responses
+        streaming=False,
     )
-    
-    # This wrapper uses the correct "conversational" endpoint internally
     return ChatHuggingFace(llm=endpoint)
 
 llm = load_llm()
