@@ -1,16 +1,16 @@
 import os
 import streamlit as st
 from sqlalchemy import create_engine
+
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.utilities import SQLDatabase
 from langchain_community.tools.sql_database.tool import QuerySQLDatabaseTool
-from langchain_core.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
 
-# --------------------------------------------------------
-# STREAMLIT CONFIG (UNCHANGED)
-# --------------------------------------------------------
+# -----------------------------------------------------
+# STREAMLIT UI (UNCHANGED)
+# -----------------------------------------------------
 st.set_page_config(
     page_title="SQL QA Assistant",
     page_icon="🧠",
@@ -35,62 +35,65 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --------------------------------------------------------
+# -----------------------------------------------------
 # API KEY
-# --------------------------------------------------------
+# -----------------------------------------------------
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
 except KeyError:
-    st.error("Set GOOGLE_API_KEY in Streamlit secrets.")
+    st.error("Please add GOOGLE_API_KEY in Streamlit secrets.")
     st.stop()
 
 os.environ["GOOGLE_API_KEY"] = api_key
 
-# --------------------------------------------------------
-# SIDEBAR (UNCHANGED)
-# --------------------------------------------------------
+# -----------------------------------------------------
+# SIDEBAR
+# -----------------------------------------------------
 st.sidebar.header("⚙️ Settings")
 temperature = st.sidebar.slider("Temperature", 0.0, 1.0, 0.2, 0.1)
 
-# --------------------------------------------------------
+# -----------------------------------------------------
 # LLM
-# --------------------------------------------------------
+# -----------------------------------------------------
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.0-flash",
     temperature=temperature
 )
 
-# --------------------------------------------------------
+# -----------------------------------------------------
 # DATABASE
-# --------------------------------------------------------
+# -----------------------------------------------------
 DB_URI = st.secrets.get("DATABASE_URL")
 
 if not DB_URI:
-    st.error("DATABASE_URL missing in secrets.")
+    st.error("DATABASE_URL not found in secrets.")
     st.stop()
 
 engine = create_engine(DB_URI)
 db = SQLDatabase(engine)
 
-# --------------------------------------------------------
+# -----------------------------------------------------
 # SQL TOOL
-# --------------------------------------------------------
+# -----------------------------------------------------
 sql_tool = QuerySQLDatabaseTool(db=db)
 
 tools = [sql_tool]
 
-# --------------------------------------------------------
+# -----------------------------------------------------
 # LANGGRAPH AGENT (2026 WAY)
-# --------------------------------------------------------
+# -----------------------------------------------------
 agent = create_react_agent(
     llm=llm,
-    tools=tools,
+    tools=tools
 )
 
-# --------------------------------------------------------
-# UI
-# --------------------------------------------------------
-st.markdown("<h1 class='main-header'>🧠 SQL Question Answering Assistant</h1>", unsafe_allow_html=True)
+# -----------------------------------------------------
+# MAIN UI
+# -----------------------------------------------------
+st.markdown(
+    "<h1 class='main-header'>🧠 SQL Question Answering Assistant</h1>",
+    unsafe_allow_html=True
+)
 
 question = st.text_input(
     "Ask a question about your database:",
@@ -98,11 +101,10 @@ question = st.text_input(
 )
 
 if st.button("🚀 Run Query"):
-
     if not question.strip():
         st.warning("Please enter a question.")
     else:
-        with st.spinner("Thinking and querying database..."):
+        with st.spinner("Querying database..."):
             result = agent.invoke(
                 {
                     "messages": [
