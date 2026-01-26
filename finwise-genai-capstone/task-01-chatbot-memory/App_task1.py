@@ -70,6 +70,7 @@ def load_llm():
         huggingfacehub_api_token=hf_token,
         temperature=0.7,
         max_new_tokens=512,
+        task='conversational'
         streaming=False,                # Prevents partial/truncated answers
     )
 
