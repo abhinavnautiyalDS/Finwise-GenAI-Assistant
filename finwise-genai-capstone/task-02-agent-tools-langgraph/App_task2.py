@@ -76,12 +76,11 @@ st.sidebar.success("Groq key loaded ✓")
 @st.cache_resource
 def get_llm():
     return ChatGroq(
-        model_name="llama-3.1-70b-versatile",
+        model_name="llama-3.3-70b-versatile",     # ← Change from 3.1 to 3.3
         temperature=0.15,
         max_tokens=1024,
         groq_api_key=GROQ_API_KEY
     )
-
 llm = get_llm()
 
 # ── Tools ────────────────────────────────────────────────────────────────────
