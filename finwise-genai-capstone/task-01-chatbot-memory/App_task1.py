@@ -1,6 +1,6 @@
 # ===============================
 # Financial Chatbot with Memory
-# Gemini ➜ Hugging Face Version
+# Hugging Face (LangChain v0.2+)
 # Built by Abhinav Nautiyal
 # ===============================
 
@@ -10,7 +10,6 @@ from langchain_community.llms import HuggingFaceHub
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-
 
 # --------------------------------------------------
 # PAGE CONFIG
@@ -49,9 +48,9 @@ with st.sidebar:
     st.header("About This Chatbot")
     st.markdown("""
     - Uses **Hugging Face LLM**
-    - Conversation-aware memory
+    - Memory-based conversation
+    - LangChain latest architecture
     - No Gemini / no Google API
-    - Fully assignment-safe
     """)
 
 # --------------------------------------------------
@@ -80,20 +79,39 @@ def load_llm():
 llm = load_llm()
 
 # --------------------------------------------------
-# MEMORY + CONVERSATION
+# PROMPT TEMPLATE
 # --------------------------------------------------
-if "memory" not in st.session_state:
-    st.session_state.memory = ConversationBufferMemory()
+prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", "You are a helpful financial assistant."),
+        MessagesPlaceholder(variable_name="history"),
+        ("human", "{input}")
+    ]
+)
 
-if "conversation" not in st.session_state:
-    st.session_state.conversation = ConversationChain(
-        llm=llm,
-        memory=st.session_state.memory,
-        verbose=False
-    )
+chain = prompt | llm
 
 # --------------------------------------------------
-# CHAT HISTORY
+# MEMORY STORE
+# --------------------------------------------------
+if "store" not in st.session_state:
+    st.session_state.store = {}
+
+
+def get_session_history(session_id: str):
+    if session_id not in st.session_state.store:
+        st.session_state.store[session_id] = InMemoryChatMessageHistory()
+    return st.session_state.store[session_id]
+
+conversation = RunnableWithMessageHistory(
+    chain,
+    get_session_history,
+    input_messages_key="input",
+    history_messages_key="history",
+)
+
+# --------------------------------------------------
+# CHAT HISTORY UI
 # --------------------------------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -111,9 +129,15 @@ if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
 
     with st.spinner("Thinking..."):
-        response = st.session_state.conversation.predict(input=user_input)
+        response = conversation.invoke(
+            {"input": user_input},
+            config={"configurable": {"session_id": "user_1"}}
+        )
 
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": response.content
+    })
 
     st.rerun()
 
