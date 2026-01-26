@@ -69,10 +69,16 @@ except KeyError:
 @st.cache_resource
 def load_llm():
     return HuggingFaceEndpoint(
-        repo_id="google/flan-t5-large",
+        repo_id="meta-llama/Llama-3.2-3B-Instruct",
         huggingfacehub_api_token=hf_token,
         temperature=0.7,
         max_new_tokens=512,
+        # Important additions for stability & chat behavior on free tier
+        streaming=False,                    # Avoids common streaming bugs / partial responses
+        # task="text-generation",           # Usually auto-detected, but safe to include
+        model_kwargs={
+            "max_length": 2048,             # Helps prevent truncation on longer chats
+        }
     )
 llm = load_llm()
 
