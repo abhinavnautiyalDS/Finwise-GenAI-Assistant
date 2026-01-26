@@ -5,8 +5,10 @@
 # ===============================
 
 import streamlit as st
-from langchain.chains import ConversationChain
-from langchain.memory import ConversationBufferMemory
+from langchain.chains.conversation.base import ConversationChain
+from langchain.memory.buffer import ConversationBufferMemory
+
+
 from langchain_community.llms import HuggingFaceHub
 
 # --------------------------------------------------
