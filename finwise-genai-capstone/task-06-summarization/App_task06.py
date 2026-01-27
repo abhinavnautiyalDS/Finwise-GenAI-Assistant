@@ -2,12 +2,20 @@ import os
 import tempfile
 import streamlit as st
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.chains.summarize import load_summarize_chain
 from langchain_core.documents import Document
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import PromptTemplate
-
+# Alternative import style
+try:
+    from langchain.chains.summarize import load_summarize_chain
+except ImportError:
+    # Fallback for different LangChain versions
+    try:
+        from langchain import load_summarize_chain
+    except ImportError:
+        st.error("Failed to import LangChain modules. Please check your installation.")
+        st.stop()
 # ============================
 # Page Configuration
 # ============================
