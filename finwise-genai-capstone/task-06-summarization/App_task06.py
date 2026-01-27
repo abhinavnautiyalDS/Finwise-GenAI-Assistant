@@ -1,21 +1,25 @@
 import os
 import tempfile
 import streamlit as st
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.documents import Document
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.prompts import PromptTemplate
-# Alternative import style
+
+# ============================
+# Dynamic imports with fallbacks for LangChain 1.x
+# ============================
+
 try:
+    # Try LangChain 1.x imports first
+    from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain.chains.summarize import load_summarize_chain
-except ImportError:
-    # Fallback for different LangChain versions
-    try:
-        from langchain import load_summarize_chain
-    except ImportError:
-        st.error("Failed to import LangChain modules. Please check your installation.")
-        st.stop()
+    from langchain_core.documents import Document
+    from langchain_community.document_loaders import PyPDFLoader, TextLoader
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from langchain_core.prompts import PromptTemplate
+    LANGCHAIN_VERSION = "1.x"
+except ImportError as e:
+    st.error(f"Import Error: {e}")
+    st.error("Please make sure all required LangChain packages are installed.")
+    st.stop()
+
 # ============================
 # Page Configuration
 # ============================
@@ -97,7 +101,8 @@ verbose = st.sidebar.checkbox("Verbose (console logs)", value=False)
 def get_llm(temp):
     return ChatGoogleGenerativeAI(
         model="gemini-1.5-flash",
-        temperature=temp
+        temperature=temp,
+        convert_system_message_to_human=True
     )
 
 llm = get_llm(temperature)
@@ -167,7 +172,8 @@ def load_documents(uploaded_files):
         except Exception as e:
             st.error(f"Error loading {uploaded_file.name}: {str(e)}")
         finally:
-            os.unlink(temp_path)
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
 
     return raw_documents
 
@@ -185,51 +191,53 @@ def split_documents(raw_documents):
     return splitter.split_documents(raw_documents)
 
 # ============================
-# Summarization Logic
+# Summarization Logic for LangChain 1.x
 # ============================
 
 def summarize_documents(docs, chain_type, llm, verbose=False):
     if not docs:
         return "No documents provided."
 
-    # Create prompt templates
-    map_prompt = PromptTemplate.from_template(summary_prompt_template)
-    
-    if chain_type == "stuff":
-        chain = load_summarize_chain(
-            llm=llm,
-            chain_type="stuff",
-            prompt=map_prompt,
-            verbose=verbose
-        )
-        
-    elif chain_type == "map_reduce":
-        combine_prompt = PromptTemplate.from_template(summary_prompt_template)
-        
-        chain = load_summarize_chain(
-            llm=llm,
-            chain_type="map_reduce",
-            map_prompt=map_prompt,
-            combine_prompt=combine_prompt,
-            verbose=verbose
-        )
-        
-    elif chain_type == "refine":
-        refine_prompt = PromptTemplate.from_template(refine_prompt_template)
-        
-        chain = load_summarize_chain(
-            llm=llm,
-            chain_type="refine",
-            question_prompt=map_prompt,
-            refine_prompt=refine_prompt,
-            verbose=verbose
-        )
-    else:
-        return "Invalid chain type."
-
     try:
+        # Create prompt templates
+        map_prompt = PromptTemplate.from_template(summary_prompt_template)
+        
+        if chain_type == "stuff":
+            chain = load_summarize_chain(
+                llm=llm,
+                chain_type="stuff",
+                prompt=map_prompt,
+                verbose=verbose
+            )
+            
+        elif chain_type == "map_reduce":
+            combine_prompt = PromptTemplate.from_template(summary_prompt_template)
+            
+            chain = load_summarize_chain(
+                llm=llm,
+                chain_type="map_reduce",
+                map_prompt=map_prompt,
+                combine_prompt=combine_prompt,
+                verbose=verbose
+            )
+            
+        elif chain_type == "refine":
+            refine_prompt = PromptTemplate.from_template(refine_prompt_template)
+            
+            chain = load_summarize_chain(
+                llm=llm,
+                chain_type="refine",
+                question_prompt=map_prompt,
+                refine_prompt=refine_prompt,
+                verbose=verbose
+            )
+        else:
+            return "Invalid chain type."
+
+        # Invoke the chain
         result = chain.invoke({"input_documents": docs})
         return result["output_text"]
+        
     except Exception as e:
         return f"❌ Error during summarization: {str(e)}"
 
