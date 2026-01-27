@@ -3,21 +3,45 @@ import tempfile
 import streamlit as st
 
 # ============================
-# Dynamic imports with fallbacks for LangChain 1.x
+# LangChain 1.x Imports
 # ============================
 
 try:
-    # Try LangChain 1.x imports first
+    # Try different import patterns for LangChain 1.x
     from langchain_google_genai import ChatGoogleGenerativeAI
-    from langchain.chains.summarize import load_summarize_chain
-    from langchain_core.documents import Document
-    from langchain_community.document_loaders import PyPDFLoader, TextLoader
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
     from langchain_core.prompts import PromptTemplate
-    LANGCHAIN_VERSION = "1.x"
+    
+    # For LangChain 1.x, try these imports
+    try:
+        from langchain.chains.summarize import load_summarize_chain
+    except ImportError:
+        # Alternative import for LangChain 1.x
+        from langchain.chains import load_summarize_chain
+    
+    try:
+        from langchain_community.document_loaders import PyPDFLoader, TextLoader
+    except ImportError:
+        # Fallback to community or base loaders
+        from langchain.document_loaders import PyPDFLoader, TextLoader
+    
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from langchain_core.documents import Document
+    
 except ImportError as e:
     st.error(f"Import Error: {e}")
-    st.error("Please make sure all required LangChain packages are installed.")
+    st.error("Installing required packages...")
+    
+    # Installation instructions
+    st.code("""
+    # Required packages:
+    streamlit==1.53.1
+    langchain==1.2.7
+    langchain-google-genai==4.2.0
+    langchain-community==0.4.1
+    langchain-text-splitters==1.1.0
+    langchain-core==1.2.7
+    pypdf==6.6.2
+    """)
     st.stop()
 
 # ============================
@@ -191,7 +215,7 @@ def split_documents(raw_documents):
     return splitter.split_documents(raw_documents)
 
 # ============================
-# Summarization Logic for LangChain 1.x
+# Summarization Logic
 # ============================
 
 def summarize_documents(docs, chain_type, llm, verbose=False):
