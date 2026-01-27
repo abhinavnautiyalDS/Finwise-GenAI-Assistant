@@ -57,7 +57,7 @@ st.markdown(
 # ============================
 # Hugging Face Configuration for Qwen2.5-3B-Instruct
 # ============================
-HF_API_URL = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-3B-Instruct"
+HF_API_URL = "https://huggingface.co/zai-org/GLM-4.7-Flash?inference_provider=novita"
 
 # Try to get Hugging Face token from secrets (optional, improves rate limits)
 try:
