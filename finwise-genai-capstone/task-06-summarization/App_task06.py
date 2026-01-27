@@ -4,199 +4,259 @@ import streamlit as st
 import requests
 import json
 from pathlib import Path
+from pypdf import PdfReader
 
 # ============================
 # Page Configuration
 # ============================
 st.set_page_config(
-    page_title="AI Document Summarizer",
-    page_icon="📄",
+    page_title="Financial Document Summarizer",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
 # ============================
-# Modern Clean CSS
+# Custom CSS for exact UI match
 # ============================
 st.markdown("""
 <style>
     /* Main container */
-    .main-container {
-        max-width: 900px;
+    .stApp {
+        max-width: 1200px;
         margin: 0 auto;
-        padding: 20px;
+        padding: 0 20px;
     }
     
-    /* Clean title */
-    .main-title {
-        text-align: center;
-        font-size: 3.5rem;
-        font-weight: 800;
-        color: #2D3748;
+    /* Main header */
+    .main-header {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1a202c;
         margin-bottom: 0.5rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
     }
     
-    /* Tagline */
-    .tagline {
+    /* Options container */
+    .options-container {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 2rem;
+        align-items: center;
+        background: #f8fafc;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+    }
+    
+    /* Temperature slider styling */
+    .temperature-container {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        min-width: 250px;
+    }
+    
+    .temperature-label {
+        font-weight: 600;
+        color: #4a5568;
+        min-width: 100px;
+    }
+    
+    /* Chain type dropdown */
+    .chain-container {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        min-width: 250px;
+    }
+    
+    .chain-label {
+        font-weight: 600;
+        color: #4a5568;
+        min-width: 100px;
+    }
+    
+    /* File upload area */
+    .upload-area {
+        border: 3px dashed #cbd5e0;
+        border-radius: 12px;
+        padding: 3rem;
         text-align: center;
-        font-size: 1.2rem;
-        color: #718096;
-        margin-bottom: 3rem;
-        font-weight: 400;
-    }
-    
-    /* Upload section */
-    .upload-section {
-        background: white;
-        border-radius: 20px;
-        padding: 40px;
-        margin: 2rem 0;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-        border: 2px dashed #E2E8F0;
+        background: #f7fafc;
+        margin: 1rem 0;
         transition: all 0.3s ease;
     }
     
-    .upload-section:hover {
-        border-color: #667eea;
-        box-shadow: 0 15px 50px rgba(102, 126, 234, 0.15);
+    .upload-area:hover {
+        border-color: #4299e1;
+        background: #ebf8ff;
     }
     
-    /* Upload button styling */
-    div[data-testid="stFileUploader"] {
-        width: 100%;
+    .upload-text {
+        color: #718096;
+        font-size: 1rem;
+        margin-top: 0.5rem;
+        margin-bottom: 1.5rem;
     }
     
-    div[data-testid="stFileUploader"] > section {
-        padding: 0;
-        border: none;
-        background: transparent;
-    }
-    
-    div[data-testid="stFileUploader"] button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 12px !important;
-        padding: 18px 40px !important;
-        font-size: 1.3rem !important;
-        font-weight: 600 !important;
-        width: 100% !important;
-        margin: 0 !important;
-        transition: all 0.3s ease !important;
-    }
-    
-    div[data-testid="stFileUploader"] button:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4) !important;
-    }
-    
-    div[data-testid="stFileUploader"] button:after {
-        content: " 📁";
-        font-size: 1.5rem;
+    .upload-info {
+        color: #a0aec0;
+        font-size: 0.85rem;
+        margin-top: 1rem;
     }
     
     /* File cards */
     .file-card {
         background: white;
-        border-radius: 12px;
-        padding: 20px;
-        margin: 15px 0;
-        border-left: 5px solid #667eea;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-left: 4px solid #4299e1;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
     
-    /* Stats cards */
-    .stat-card {
-        background: white;
-        border-radius: 15px;
-        padding: 25px;
-        text-align: center;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
-        border: 1px solid #EDF2F7;
-        transition: transform 0.3s ease;
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
     }
     
-    .stat-card:hover {
-        transform: translateY(-5px);
-    }
-    
-    .stat-number {
-        font-size: 3rem;
-        font-weight: 800;
-        color: #667eea;
-        margin-bottom: 0.5rem;
-    }
-    
-    .stat-label {
-        color: #718096;
-        font-size: 1rem;
+    .file-name {
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        color: #2d3748;
+    }
+    
+    .file-size {
+        color: #718096;
+        font-size: 0.85rem;
+    }
+    
+    .file-status {
+        color: #48bb78;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    
+    /* Status messages */
+    .status-message {
+        background: #f0fff4;
+        border: 1px solid #c6f6d5;
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin: 0.5rem 0;
+        color: #276749;
+        font-size: 0.9rem;
+    }
+    
+    .error-message {
+        background: #fed7d7;
+        border: 1px solid #fc8181;
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin: 0.5rem 0;
+        color: #c53030;
+        font-size: 0.9rem;
     }
     
     /* Summary box */
     .summary-box {
-        background: linear-gradient(135deg, #f6f9fc 0%, #ffffff 100%);
-        border-radius: 20px;
-        padding: 40px;
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
         margin: 2rem 0;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
-        border: 1px solid #E2E8F0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
     }
     
     .summary-title {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #2D3748;
-        margin-bottom: 1.5rem;
-        text-align: center;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 1rem;
     }
     
     .summary-content {
-        line-height: 1.8;
-        font-size: 1.1rem;
-        color: #4A5568;
-    }
-    
-    /* Buttons */
-    .action-button {
-        background: linear-gradient(135deg, #48BB78 0%, #38A169 100%) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 12px !important;
-        padding: 18px 40px !important;
-        font-size: 1.3rem !important;
-        font-weight: 600 !important;
-        transition: all 0.3s ease !important;
-        margin: 1rem 0 !important;
-    }
-    
-    .action-button:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 25px rgba(72, 187, 120, 0.4) !important;
-    }
-    
-    .download-button {
-        background: linear-gradient(135deg, #4299E1 0%, #3182CE 100%) !important;
-    }
-    
-    /* Remove drag-drop area */
-    div[data-testid="stFileUploader"] div[role="button"] {
-        display: none !important;
+        color: #4a5568;
+        line-height: 1.6;
+        font-size: 1rem;
     }
     
     /* Hide Streamlit elements */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
     .stDeployButton {display: none;}
     
-    /* Progress bar */
-    .stProgress > div > div > div {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* Button styling */
+    .stButton button {
+        background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.75rem 2rem !important;
+        font-weight: 600 !important;
+        width: 100% !important;
+    }
+    
+    /* Checkbox styling */
+    .stCheckbox label {
+        font-weight: 500;
+        color: #4a5568;
+    }
+    
+    /* Custom file uploader */
+    div[data-testid="stFileUploader"] section {
+        border: none !important;
+        background: transparent !important;
+    }
+    
+    /* Remove default file uploader styling */
+    div[data-testid="stFileUploader"] > div {
+        background: transparent !important;
+        border: none !important;
+    }
+    
+    /* Make file uploader button look like custom */
+    div[data-testid="stFileUploader"] button {
+        background: #4299e1 !important;
+        color: white !important;
+        border-radius: 8px !important;
+        padding: 0.75rem 1.5rem !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Processing steps */
+    .processing-step {
+        background: #edf2f7;
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        margin: 0.25rem 0;
+        font-size: 0.9rem;
+        color: #4a5568;
+    }
+    
+    .processing-step.done {
+        background: #c6f6d5;
+        color: #276749;
+    }
+    
+    /* Token management warning */
+    .token-warning {
+        background: #feebc8;
+        border: 1px solid #fbd38d;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        color: #c05621;
+    }
+    
+    /* Webhook container */
+    .webhook-container {
+        background: #f7fafc;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        border: 1px solid #e2e8f0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -216,183 +276,126 @@ def init_openrouter():
 # API Configuration
 # ============================
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-
-# Initialize API
-api_key, api_message = init_openrouter()
-
-# ============================
-# Model Configuration
-# ============================
-MODEL_NAME = "mistralai/mistral-7b-instruct:free"
-MAX_TOKENS = 32768  # Mistral 7B context
-OUTPUT_TOKENS = 500
+MODEL_NAME = "mistralai/mistral-7b-instruct"
+MAX_CONTEXT_TOKENS = 8192  # Mistral 7B context window
+MAX_OUTPUT_TOKENS = 1000
 
 # ============================
-# Main App Layout
+# Token Management Functions
 # ============================
+def estimate_tokens(text):
+    """Rough token estimation (4 chars ≈ 1 token)"""
+    return len(text) // 4
 
-# Main Title
-st.markdown('<h1 class="main-title">📄 AI Document Summarizer</h1>', unsafe_allow_html=True)
-st.markdown('<p class="tagline">Transform lengthy documents into concise summaries instantly</p>', unsafe_allow_html=True)
-
-# API Status Display
-if not api_key:
-    st.error("🔐 API Key Required")
-    st.markdown("""
-    <div style="background: #F7FAFC; padding: 25px; border-radius: 15px; margin: 20px 0;">
-        <h4 style="color: #2D3748; margin-top: 0;">Get Your Free API Key:</h4>
-        <ol style="color: #4A5568;">
-            <li>Visit <a href="https://openrouter.ai/" target="_blank" style="color: #667eea; font-weight: 600;">OpenRouter.ai</a></li>
-            <li>Sign up for a free account</li>
-            <li>Get your API key from the dashboard</li>
-            <li>Add to Streamlit secrets as <code>OPENROUTER_API_KEY</code></li>
-        </ol>
-        <p style="color: #718096; font-size: 0.9rem; margin-top: 15px;">
-            💡 <strong>Free Tier Includes:</strong> 500,000 tokens per month • Mistral 7B • No credit card required
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    st.stop()
-else:
-    # Model Info Card
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #f6f9fc 0%, #ffffff 100%); 
-                border-radius: 15px; 
-                padding: 25px; 
-                margin: 20px 0;
-                border-left: 5px solid #764ba2;
-                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div>
-                <h4 style="color: #2D3748; margin: 0 0 5px 0;">🤖 Using: Mistral 7B</h4>
-                <p style="color: #718096; margin: 0; font-size: 0.95rem;">Free Tier • Max 32,768 tokens</p>
-            </div>
-            <div style="text-align: right;">
-                <div style="font-size: 0.9rem; color: #48BB78; font-weight: 600;">✅ API Connected</div>
-                <div style="font-size: 0.85rem; color: #718096;">via OpenRouter</div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ============================
-# File Upload Section
-# ============================
-st.markdown('<div class="upload-section">', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; margin-bottom: 30px;">', unsafe_allow_html=True)
-st.markdown('<h3 style="color: #2D3748; margin-bottom: 10px;">📁 Upload Documents</h3>', unsafe_allow_html=True)
-st.markdown('<p style="color: #718096;">Upload PDF or text files for summarization</p>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
-
-uploaded_files = st.file_uploader(
-    "",
-    type=["pdf", "txt"],
-    accept_multiple_files=True,
-    label_visibility="collapsed",
-    help="Upload multiple PDF or text files"
-)
-
-st.markdown('</div>', unsafe_allow_html=True)
+def truncate_text(text, max_tokens=6000):
+    """Truncate text to fit within token limit"""
+    # Leave room for prompt and response
+    max_chars = max_tokens * 4
+    
+    if len(text) <= max_chars:
+        return text, len(text) // 4, False
+    
+    # Truncate and try to cut at sentence boundary
+    truncated = text[:max_chars]
+    last_period = truncated.rfind('. ')
+    last_newline = truncated.rfind('\n\n')
+    
+    cut_point = max(last_period, last_newline)
+    if cut_point > max_chars * 0.8:  # If we find a good cut point near the end
+        truncated = truncated[:cut_point + 1]
+    
+    return truncated, len(truncated) // 4, True
 
 # ============================
 # File Processing Functions
 # ============================
-def extract_text_from_pdf(file_path):
-    """Extract text from PDF"""
+def extract_text_from_pdf(file_bytes):
+    """Extract text from PDF file bytes"""
     try:
-        from pypdf import PdfReader
-        reader = PdfReader(file_path)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+            tmp_file.write(file_bytes)
+            tmp_path = tmp_file.name
+        
+        reader = PdfReader(tmp_path)
         text = ""
-        for page in reader.pages:
+        for page_num, page in enumerate(reader.pages):
             page_text = page.extract_text()
             if page_text:
-                text += page_text + "\n\n"
-        return text.strip()
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-def process_files(uploaded_files):
-    """Process uploaded files"""
-    all_text = ""
-    file_details = []
-    
-    for uploaded_file in uploaded_files:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as temp_file:
-            temp_file.write(uploaded_file.read())
-            temp_path = temp_file.name
+                text += f"Page {page_num + 1}:\n{page_text}\n\n"
         
-        try:
-            if uploaded_file.type == "application/pdf":
-                text = extract_text_from_pdf(temp_path)
-                file_type = "📄 PDF"
-            elif uploaded_file.type == "text/plain":
-                with open(temp_path, 'r', encoding='utf-8') as f:
-                    text = f.read()
-                file_type = "📝 TXT"
-            else:
-                continue
-            
-            if text and not text.startswith("Error"):
-                all_text += f"\n\n{'='*60}\n📄 File: {uploaded_file.name}\n{'='*60}\n\n{text}"
-                file_details.append({
-                    "name": uploaded_file.name,
-                    "type": file_type,
-                    "size": len(uploaded_file.getvalue()),
-                    "text_length": len(text)
-                })
-                
-        except Exception as e:
-            st.error(f"Error processing {uploaded_file.name}: {str(e)}")
-        finally:
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
+        # Clean up temp file
+        os.unlink(tmp_path)
+        return text.strip(), len(reader.pages)
     
-    return all_text.strip(), file_details
+    except Exception as e:
+        return f"Error extracting PDF: {str(e)}", 0
+
+def extract_text_from_txt(file_bytes):
+    """Extract text from TXT file"""
+    try:
+        text = file_bytes.decode('utf-8', errors='ignore')
+        return text.strip(), len(text.split('\n'))
+    except:
+        return "", 0
+
+def process_uploaded_file(uploaded_file):
+    """Process uploaded file and return text"""
+    file_bytes = uploaded_file.getvalue()
+    
+    if uploaded_file.type == "application/pdf":
+        text, pages = extract_text_from_pdf(file_bytes)
+        if isinstance(text, str) and not text.startswith("Error"):
+            return text, pages, "PDF"
+    elif uploaded_file.type == "text/plain":
+        text, pages = extract_text_from_txt(file_bytes)
+        return text, pages, "TXT"
+    
+    return "", 0, None
 
 # ============================
-# OpenRouter API Function
+# Summarization Function
 # ============================
-def summarize_with_mistral(text, api_key):
-    """Summarize text using Mistral 7B via OpenRouter"""
+def summarize_financial_document(text, api_key, temperature=0.6):
+    """Summarize financial document using Mistral 7B"""
     
-    # Truncate text if too long (leave room for prompt and response)
-    max_chars = 25000  # Leave room for prompt
-    if len(text) > max_chars:
-        text = text[:max_chars]
+    # Truncate if needed
+    truncated_text, token_count, was_truncated = truncate_text(text, max_tokens=6000)
     
-    # Prepare the prompt
-    prompt = f"""Please provide a comprehensive summary of the following document(s). 
-
-Focus on:
-1. Key points and main ideas
-2. Important facts and figures
-3. Conclusions and recommendations
-4. Critical insights
-
-Document Content:
-{text}
-
-Please provide a well-structured, concise summary:"""
+    if was_truncated:
+        st.markdown(f'<div class="token-warning">⚠️ Document truncated from {estimate_tokens(text):,} to {token_count:,} tokens to fit model limit</div>', unsafe_allow_html=True)
     
+    # Financial summarization prompt
+    system_prompt = """You are a financial analyst specializing in document summarization. 
+Extract and summarize key information from financial documents including:
+1. Key financial figures and metrics
+2. Strategic developments and initiatives  
+3. Future outlook and projections
+4. Risks and opportunities
+5. Major changes from previous periods
+
+Provide a concise, well-structured summary that highlights the most important information.
+Format with clear sections and bullet points where appropriate."""
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://docsum.streamlit.app",  # Optional: your site URL
-        "X-Title": "DocSum AI Summarizer"
+        "HTTP-Referer": "https://financial-summarizer.streamlit.app",
+        "X-Title": "Financial Document Summarizer"
     }
     
     data = {
         "model": MODEL_NAME,
         "messages": [
-            {"role": "user", "content": prompt}
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Please summarize this financial document:\n\n{truncated_text}"}
         ],
-        "max_tokens": OUTPUT_TOKENS,
-        "temperature": 0.3,
+        "max_tokens": MAX_OUTPUT_TOKENS,
+        "temperature": temperature,
         "top_p": 0.9
     }
     
     try:
-        response = requests.post(OPENROUTER_URL, headers=headers, json=data, timeout=60)
+        response = requests.post(OPENROUTER_URL, headers=headers, json=data, timeout=120)
         
         if response.status_code == 200:
             result = response.json()
@@ -406,167 +409,201 @@ Please provide a well-structured, concise summary:"""
         return f"Error: {str(e)}"
 
 # ============================
-# Main App Logic
+# Main App
 # ============================
-if uploaded_files:
-    # Show uploaded files
-    with st.expander(f"📋 View Uploaded Files ({len(uploaded_files)} files)", expanded=True):
-        for i, file in enumerate(uploaded_files, 1):
-            file_size_kb = len(file.getvalue()) / 1024
-            file_type = file.type.split('/')[-1].upper()
-            
-            st.markdown(f"""
-            <div class="file-card">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <div>
-                        <strong style="color: #2D3748;">{i}. {file.name}</strong><br>
-                        <span style="color: #718096; font-size: 0.9rem;">{file_type} • {file_size_kb:.1f} KB</span>
-                    </div>
-                    <div style="color: #48BB78; font-weight: 600;">✓</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    # Process files
-    with st.spinner("🔄 Processing documents..."):
-        text, file_details = process_files(uploaded_files)
-    
-    if text and len(text) > 100:
-        # Show statistics
-        st.markdown("### 📊 Document Statistics")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        total_chars = len(text)
-        total_words = len(text.split())
-        
-        with col1:
-            st.markdown(f"""
-            <div class="stat-card">
-                <div class="stat-number">{len(file_details)}</div>
-                <div class="stat-label">Files</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown(f"""
-            <div class="stat-card">
-                <div class="stat-number">{total_chars:,}</div>
-                <div class="stat-label">Characters</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown(f"""
-            <div class="stat-card">
-                <div class="stat-number">{total_words:,}</div>
-                <div class="stat-label">Words</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col4:
-            available_tokens = MAX_TOKENS - OUTPUT_TOKENS
-            st.markdown(f"""
-            <div class="stat-card">
-                <div class="stat-number">{available_tokens:,}</div>
-                <div class="stat-label">Tokens Available</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Preview
-        with st.expander("👁️ Preview Document Text", expanded=False):
-            preview_text = text[:3000]
-            if len(text) > 3000:
-                preview_text += "\n\n[... document continues ...]"
-            st.text(preview_text)
-        
-        # Generate Summary Button
-        st.markdown("---")
-        st.markdown("""
-        <div style="text-align: center; margin: 2rem 0;">
-            <h3 style="color: #2D3748; margin-bottom: 1rem;">Ready to Generate Summary</h3>
-            <p style="color: #718096;">Click the button below to process with Mistral 7B AI</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        if st.button("✨ Generate AI Summary", key="generate", type="primary", use_container_width=True):
-            with st.spinner("🤖 Generating summary with Mistral 7B..."):
-                summary = summarize_with_mistral(text, api_key)
-            
-            if summary and not summary.startswith("API Error") and not summary.startswith("Error"):
-                # Display Summary
-                st.markdown('<div class="summary-box">', unsafe_allow_html=True)
-                st.markdown('<div class="summary-title">📋 AI-Generated Summary</div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="summary-content">{summary}</div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-                
-                # Summary Statistics
-                st.markdown("---")
-                st.markdown("### 📈 Summary Statistics")
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    compression = 100 - (len(summary) / total_chars * 100) if total_chars > 0 else 0
-                    st.metric("Compression", f"{compression:.1f}%")
-                with col2:
-                    st.metric("Summary Length", f"{len(summary):,} chars")
-                with col3:
-                    st.metric("Word Count", f"{len(summary.split()):,}")
-                
-                # Download Button
-                st.download_button(
-                    label="💾 Download Summary",
-                    data=summary,
-                    file_name="ai_summary.txt",
-                    mime="text/plain",
-                    use_container_width=True,
-                    key="download"
-                )
-                
-            else:
-                st.error(f"❌ {summary}")
-                st.info("""
-                **Troubleshooting Tips:**
-                1. Check your OpenRouter API key is valid
-                2. Ensure you have sufficient free credits
-                3. Try reducing the document size
-                4. Wait a moment and try again
-                """)
-    else:
-        st.error("❌ Could not extract sufficient text from uploaded files")
-else:
-    # Empty State
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-        <div style="text-align: center; padding: 4rem 2rem; background: #F7FAFC; border-radius: 20px; margin: 2rem 0;">
-            <div style="font-size: 5rem; margin-bottom: 1.5rem;">📁</div>
-            <h3 style="color: #2D3748; margin-bottom: 1rem;">No Documents Uploaded</h3>
-            <p style="color: #718096; line-height: 1.6; margin-bottom: 2rem;">
-                Upload PDF or text files to generate AI-powered summaries<br>
-                using Mistral 7B via OpenRouter
-            </p>
-            <div style="color: #A0AEC0; font-size: 0.9rem;">
-                📄 PDF • 📝 TXT • 🆓 Free Tier
+
+# Initialize API
+api_key, api_message = init_openrouter()
+
+# Main Title
+st.markdown('<h1 class="main-header">Financial Document Summarizer</h1>', unsafe_allow_html=True)
+
+# ============================
+# Configuration Options
+# ============================
+st.markdown('<div class="options-container">', unsafe_allow_html=True)
+
+# Temperature
+col1, col2 = st.columns([1, 3])
+with col1:
+    st.markdown('<div class="temperature-label">Temperature</div>', unsafe_allow_html=True)
+with col2:
+    temperature = st.slider(
+        "",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.60,
+        step=0.10,
+        label_visibility="collapsed"
+    )
+
+# Chain Type
+col1, col2 = st.columns([1, 3])
+with col1:
+    st.markdown('<div class="chain-label">Chain Type</div>', unsafe_allow_html=True)
+with col2:
+    chain_type = st.selectbox(
+        "",
+        ["stuff", "map_reduce", "refine", "map_rerank"],
+        label_visibility="collapsed"
+    )
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================
+# File Upload Section
+# ============================
+st.markdown("Upload PDF or TXT financial documents to generate a concise summary highlighting key financial figures, strategic developments, and future outlook.")
+
+st.markdown('<div class="upload-area">', unsafe_allow_html=True)
+
+uploaded_file = st.file_uploader(
+    "Choose files",
+    type=['pdf', 'txt'],
+    label_visibility="collapsed",
+    help="Drag and drop files here"
+)
+
+st.markdown('<div class="upload-text">Limit 200MB per file · PDF, TXT</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================
+# Webhook Configuration
+# ============================
+with st.expander("N8N Webhook Configuration", expanded=False):
+    webhook_url = st.text_input(
+        "N8N Webhook URL",
+        placeholder="https://your-n8n-instance.com/webhook/your-id",
+        label_visibility="collapsed"
+    )
+    if not webhook_url:
+        st.markdown('<div class="status-message">N8N Webhook URL not configured. Skipping workflow trigger.</div>', unsafe_allow_html=True)
+
+# ============================
+# Verbose Mode
+# ============================
+verbose_mode = st.checkbox("Verbose (logs in console)", value=False)
+
+# ============================
+# Process Uploaded File
+# ============================
+if uploaded_file is not None:
+    # File info card
+    file_size_mb = len(uploaded_file.getvalue()) / 1024 / 1024
+    st.markdown(f"""
+    <div class="file-card">
+        <div class="file-info">
+            <div>
+                <div class="file-name">{uploaded_file.name}</div>
+                <div class="file-size">{file_size_mb:.1f} MB · {uploaded_file.type}</div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        <div class="file-status">✓ Uploaded</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Process the file
+    with st.spinner("Processing document..."):
+        text, pages, file_type = process_uploaded_file(uploaded_file)
+        
+        if text and file_type:
+            st.markdown(f'<div class="status-message">✅ Loaded {pages} pages from {file_type}: {uploaded_file.name}</div>', unsafe_allow_html=True)
+            
+            if verbose_mode:
+                # Estimate chunks (roughly 500 words per chunk)
+                word_count = len(text.split())
+                chunks = (word_count // 500) + 1
+                st.markdown(f'<div class="processing-step">📊 Split into {chunks} text chunks for processing.</div>', unsafe_allow_html=True)
+                
+                # Preview first chunk
+                with st.expander("Preview first chunk", expanded=False):
+                    preview_text = text[:1000] + "..." if len(text) > 1000 else text
+                    st.text(preview_text)
+            
+            # Reprocess button
+            if st.button("🔄 Reprocess", key="reprocess"):
+                st.rerun()
+            
+            # Generate Summary
+            if st.button("📊 Generate Financial Summary", type="primary", use_container_width=True):
+                if not api_key:
+                    st.error("OpenRouter API key not configured. Please add it to secrets.toml")
+                else:
+                    with st.spinner("Generating summary with Mistral 7B..."):
+                        summary = summarize_financial_document(text, api_key, temperature)
+                    
+                    if summary and not summary.startswith("API Error") and not summary.startswith("Error"):
+                        # Display Summary
+                        st.markdown('<div class="summary-box">', unsafe_allow_html=True)
+                        st.markdown('<div class="summary-title">📋 Financial Summary</div>', unsafe_allow_html=True)
+                        st.markdown(f'<div class="summary-content">{summary}</div>', unsafe_allow_html=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        # Trigger webhook if configured
+                        if webhook_url:
+                            try:
+                                response = requests.post(webhook_url, json={
+                                    "file_name": uploaded_file.name,
+                                    "summary": summary,
+                                    "temperature": temperature,
+                                    "chain_type": chain_type
+                                }, timeout=5)
+                                if response.status_code == 200:
+                                    st.success("✅ Summary sent to webhook workflow")
+                            except:
+                                st.info("Webhook call skipped or failed")
+                        
+                        # Download button
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.download_button(
+                                label="📥 Download Summary",
+                                data=summary,
+                                file_name=f"{uploaded_file.name.split('.')[0]}_summary.txt",
+                                mime="text/plain",
+                                use_container_width=True
+                            )
+                        with col2:
+                            if st.button("🗑️ Clear and Upload New", use_container_width=True):
+                                st.rerun()
+                    
+                    else:
+                        st.error(f"Error generating summary: {summary}")
+        else:
+            st.error("❌ Could not extract text from the uploaded file.")
+
+# ============================
+# Manage App Section
+# ============================
+st.markdown("---")
+with st.expander("Manage App", expanded=False):
+    st.info("""
+    **App Configuration:**
+    - **Model**: mistralai/mistral-7b-instruct via OpenRouter
+    - **Context Window**: 8,192 tokens
+    - **Max File Size**: 200MB
+    - **Supported Formats**: PDF, TXT
+    
+    **Token Management:**
+    - Documents exceeding 6,000 tokens are automatically truncated
+    - Truncation preserves sentence boundaries when possible
+    - Summary uses up to 1,000 tokens
+    
+    To configure your API key, create a `.streamlit/secrets.toml` file with:
+    ```
+    OPENROUTER_API_KEY = "your-api-key-here"
+    ```
+    """)
+    
+    if st.button("Clear Cache & Restart"):
+        st.rerun()
 
 # ============================
 # Footer
 # ============================
 st.markdown("---")
 st.markdown("""
-<div style="text-align: center; color: #718096; padding: 2rem 0;">
-    <div style="display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 10px;">
-        <div>🤖 <strong>Mistral 7B</strong></div>
-        <div style="width: 4px; height: 4px; background: #CBD5E0; border-radius: 50%;"></div>
-        <div>🌐 <strong>OpenRouter</strong></div>
-        <div style="width: 4px; height: 4px; background: #CBD5E0; border-radius: 50%;"></div>
-        <div>🆓 <strong>Free Tier</strong></div>
-    </div>
-    <div style="font-size: 0.9rem;">
-        Built with Streamlit • 500,000 free tokens per month
-    </div>
+<div style="text-align: center; color: #718096; font-size: 0.85rem; padding: 1rem;">
+    Powered by <strong>Mistral 7B</strong> via OpenRouter • Token-aware truncation • Financial document specialization
 </div>
 """, unsafe_allow_html=True)
