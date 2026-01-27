@@ -44,7 +44,7 @@ st.markdown("""
     
     /* Text elements - Ensure dark text */
     .stText, .stMarkdown, .stExpander, p, div, span {
-        color: #1f2937 !important;
+        color: #ffffff !important;
     }
     
     /* Metric cards */
@@ -71,7 +71,7 @@ st.markdown("""
     /* File info cards */
     .file-card {
         background-color: #f1f5f9;
-        color: #1f2937 !important;
+        color: #ffffff !important;
         padding: 1rem;
         border-radius: 8px;
         margin: 0.5rem 0;
@@ -81,7 +81,7 @@ st.markdown("""
     /* Info/warning boxes */
     .info-box {
         background-color: #dbeafe;
-        color: #1e40af !important;
+        color: #ffffff !important;
         padding: 1rem;
         border-radius: 8px;
         border-left: 4px solid #3b82f6;
@@ -90,7 +90,7 @@ st.markdown("""
     
     .warning-box {
         background-color: #fef3c7;
-        color: #92400e !important;
+        color: #ffffff !important;
         padding: 1rem;
         border-radius: 8px;
         border-left: 4px solid #f59e0b;
