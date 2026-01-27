@@ -150,12 +150,16 @@ else:
 # ============================
 st.sidebar.title("⚙️ Summarization Settings")
 
-# Model selection (Gemini 1.5 Flash is free and fast)
+# Correct Gemini model names - Updated!
 model_name = st.sidebar.selectbox(
     "Gemini Model",
-    options=["gemini-1.5-flash", "gemini-1.5-pro"],
+    options=[
+        "gemini-1.5-flash-latest",  # Updated name
+        "gemini-1.5-pro-latest",    # Updated name
+        "gemini-pro",               # Legacy but still works
+    ],
     index=0,
-    help="gemini-1.5-flash: Fast & free | gemini-1.5-pro: Higher quality"
+    help="gemini-1.5-flash-latest: Fast & free | gemini-1.5-pro-latest: Higher quality"
 )
 
 temperature = st.sidebar.slider(
@@ -182,31 +186,69 @@ length_map = {
 }
 max_output_tokens = length_map[summary_length]
 
-# Initialize the model
+# ============================
+# Initialize Gemini Model
+# ============================
 @st.cache_resource
-def get_gemini_model(model_name, temperature):
-    """Initialize and cache Gemini model"""
-    generation_config = {
-        "temperature": temperature,
-        "top_p": 0.95,
-        "top_k": 40,
-        "max_output_tokens": max_output_tokens,
-    }
-    
-    safety_settings = [
-        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-    ]
-    
-    return genai.GenerativeModel(
-        model_name=model_name,
-        generation_config=generation_config,
-        safety_settings=safety_settings
-    )
+def get_gemini_model(_model_name, _temperature, _max_output_tokens):
+    """Initialize and cache Gemini model with correct configuration"""
+    try:
+        # Create generation configuration
+        generation_config = {
+            "temperature": _temperature,
+            "top_p": 0.95,
+            "top_k": 40,
+            "max_output_tokens": _max_output_tokens,
+        }
+        
+        # Safety settings (minimal blocking for financial docs)
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+        ]
+        
+        # Initialize the model
+        model = genai.GenerativeModel(
+            model_name=_model_name,
+            generation_config=generation_config,
+            safety_settings=safety_settings
+        )
+        
+        # Test the model with a simple prompt
+        test_response = model.generate_content("Hello")
+        if test_response.text:
+            st.sidebar.success(f"✅ Model '{_model_name}' loaded successfully")
+            return model
+        else:
+            st.sidebar.error(f"❌ Model test failed")
+            return None
+            
+    except Exception as e:
+        st.sidebar.error(f"❌ Error loading model: {str(e)}")
+        # Try fallback model
+        if _model_name != "gemini-pro":
+            st.sidebar.info("Trying fallback model: gemini-pro")
+            return get_gemini_model("gemini-pro", _temperature, _max_output_tokens)
+        return None
 
-model = get_gemini_model(model_name, temperature)
+# Initialize model
+model = get_gemini_model(model_name, temperature, max_output_tokens)
+
+if not model:
+    st.error("""
+    ❌ Could not initialize Gemini model. Possible issues:
+    1. Invalid API key
+    2. Model name not found
+    3. API quota exceeded
+    
+    **Try these fixes:**
+    - Use model name: `gemini-1.5-flash-latest`
+    - Verify your API key is correct
+    - Check your Google AI Studio dashboard
+    """)
+    st.stop()
 
 # ============================
 # File Processing Functions
@@ -342,7 +384,10 @@ def generate_summary(text, file_details):
         if response.text:
             return response.text
         else:
-            return "No summary generated. The response was blocked or empty."
+            # Check for blocked content
+            if response.prompt_feedback:
+                return f"Content blocked: {response.prompt_feedback.block_reason}"
+            return "No summary generated. The response was empty."
             
     except Exception as e:
         return f"Error generating summary: {str(e)}"
@@ -429,7 +474,7 @@ if uploaded_files:
                 use_container_width=True
             )
             
-            # Show token usage info
+            # Show model info
             st.caption(f"⚡ Using {model_name} | Temperature: {temperature} | Max tokens: {max_output_tokens}")
     else:
         st.error("❌ Could not extract sufficient text from the uploaded files")
@@ -510,3 +555,25 @@ Built with ❤️ using Streamlit • Powered by Google Gemini AI (Free Tier) �
 <a href="https://makersuite.google.com/app/apikey" target="_blank" style="color: #3b82f6;">Get your free API key</a>
 </div>
 """, unsafe_allow_html=True)
+
+# ============================
+# Debug Information (Hidden)
+# ============================
+if st.sidebar.checkbox("Show debug info", value=False):
+    st.sidebar.write("**Debug Info:**")
+    st.sidebar.write(f"API Key exists: {bool(api_key)}")
+    st.sidebar.write(f"API Key length: {len(api_key) if api_key else 0}")
+    st.sidebar.write(f"Selected model: {model_name}")
+    
+    # Test API connection
+    if st.sidebar.button("Test API Connection"):
+        try:
+            # List available models
+            available_models = genai.list_models()
+            model_names = [m.name for m in available_models]
+            st.sidebar.write("**Available models:**")
+            for name in model_names:
+                if "gemini" in name.lower():
+                    st.sidebar.code(name)
+        except Exception as e:
+            st.sidebar.error(f"API test failed: {str(e)}")
