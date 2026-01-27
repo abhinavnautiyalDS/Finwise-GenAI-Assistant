@@ -1,8 +1,8 @@
 import os
 import tempfile
 import streamlit as st
-import requests
-import json
+import google.generativeai as genai
+from pathlib import Path
 
 # ============================
 # Page Configuration
@@ -10,7 +10,8 @@ import json
 st.set_page_config(
     page_title="Financial Document Summarizer",
     page_icon="💼",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # ============================
@@ -20,31 +21,66 @@ st.markdown(
     """
     <style>
     .main-header {
-        font-size: 2.5rem;
+        font-size: 2.8rem;
         color: #1f77b4;
         text-align: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
+        font-weight: 700;
     }
     .summary-box {
-        background-color: #f0f8ff;
-        padding: 1.5rem;
+        background-color: #f8fafc;
+        color: #1e293b;
+        padding: 2rem;
+        border-radius: 12px;
+        border-left: 6px solid #1f77b4;
+        white-space: pre-wrap;
+        line-height: 1.8;
+        font-size: 1.1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        margin: 1.5rem 0;
+    }
+    .file-card {
+        background-color: #f1f5f9;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        border-left: 4px solid #3b82f6;
+    }
+    .metric-card {
+        background-color: #ffffff;
+        padding: 1.2rem;
         border-radius: 10px;
-        border-left: 5px solid #1f77b4;
-        line-height: 1.6;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
-    .success-box {
-        background-color: #d4edda;
-        padding: 1rem;
-        border-radius: 5px;
-        border-left: 5px solid #28a745;
-        margin: 1rem 0;
+    .stButton>button {
+        background: linear-gradient(135deg, #1f77b4 0%, #3b82f6 100%);
+        color: white;
+        font-weight: 600;
+        font-size: 1.1rem;
+        padding: 0.8rem 2.5rem;
+        border: none;
+        border-radius: 10px;
+        transition: all 0.3s ease;
     }
-    .warning-box {
-        background-color: #fff3cd;
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(31, 119, 180, 0.2);
+    }
+    .success-msg {
+        background-color: #d1fae5;
+        color: #065f46;
         padding: 1rem;
-        border-radius: 5px;
-        border-left: 5px solid #ffc107;
-        margin: 1rem 0;
+        border-radius: 8px;
+        border-left: 4px solid #10b981;
+    }
+    .warning-msg {
+        background-color: #fef3c7;
+        color: #92400e;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #f59e0b;
     }
     </style>
     """,
@@ -52,321 +88,425 @@ st.markdown(
 )
 
 # ============================
-# Updated Hugging Face Router API Configuration
+# Google Gemini API Setup (FREE TIER)
 # ============================
-HF_ROUTER_API = "https://router.huggingface.co/hf-inference"
 
-# Models that work with the new router API
-AVAILABLE_MODELS = [
-    "facebook/bart-large-cnn",
-    "google/pegasus-xsum", 
-    "sshleifer/distilbart-cnn-12-6",
-    "Falconsai/text_summarization",
-    "pszemraj/led-base-book-summary"
-]
+# Display API key instructions prominently
+st.sidebar.title("🔑 API Setup")
 
-# Try to get Hugging Face token (optional but recommended)
+with st.sidebar.expander("📋 How to get FREE Gemini API Key", expanded=True):
+    st.markdown("""
+    1. **Go to**: [Google AI Studio](https://makersuite.google.com/app/apikey)
+    2. **Sign in** with Google account
+    3. **Create API key** (it's free!)
+    4. **Copy key** and paste below
+    
+    **Free Limits:**
+    - 60 requests per minute
+    - 15 million tokens per month
+    - More than enough for regular use
+    """)
+
+# Get API key
 try:
-    HF_TOKEN = st.secrets["HF_TOKEN"]
-    st.sidebar.markdown('<div class="success-box">✓ HF Token loaded from secrets</div>', unsafe_allow_html=True)
-except:
-    HF_TOKEN = st.sidebar.text_input("Hugging Face Token (optional)", type="password", 
-                                    help="Get from huggingface.co/settings/tokens for better rate limits")
-    if HF_TOKEN:
-        st.sidebar.markdown('<div class="success-box">✓ HF Token entered</div>', unsafe_allow_html=True)
+    # First try Streamlit secrets
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    st.sidebar.markdown('<div class="success-msg">✓ API key loaded from secrets</div>', unsafe_allow_html=True)
+except KeyError:
+    # Fallback to user input
+    api_key = st.sidebar.text_input(
+        "Enter your Gemini API Key:",
+        type="password",
+        placeholder="Paste your API key here...",
+        help="Get free API key from https://makersuite.google.com/app/apikey"
+    )
+    
+    if api_key:
+        st.sidebar.markdown('<div class="success-msg">✓ API key entered</div>', unsafe_allow_html=True)
+    else:
+        st.sidebar.markdown('<div class="warning-msg">⚠️ API key required</div>', unsafe_allow_html=True)
+
+# Configure Gemini
+if api_key:
+    try:
+        genai.configure(api_key=api_key)
+        st.sidebar.success("✅ Gemini API configured successfully")
+    except Exception as e:
+        st.sidebar.error(f"Configuration error: {str(e)}")
+else:
+    st.warning("Please enter your Gemini API key to continue")
+    st.info("""
+    **Getting your FREE Gemini API key:**
+    
+    1. Visit **[Google AI Studio](https://makersuite.google.com/app/apikey)**
+    2. Click **"Create API Key"**
+    3. Copy the key and paste in the sidebar
+    4. The free tier is very generous (60 RPM, 15M tokens/month)
+    """)
+    st.stop()
 
 # ============================
-# Model Selection
+# Sidebar Configuration
 # ============================
-st.sidebar.title("🤖 Model Configuration")
+st.sidebar.title("⚙️ Summarization Settings")
 
-selected_model = st.sidebar.selectbox(
-    "Choose Model",
-    AVAILABLE_MODELS,
+# Model selection (Gemini 1.5 Flash is free and fast)
+model_name = st.sidebar.selectbox(
+    "Gemini Model",
+    options=["gemini-1.5-flash", "gemini-1.5-pro"],
     index=0,
-    help="facebook/bart-large-cnn is most reliable for summarization"
+    help="gemini-1.5-flash: Fast & free | gemini-1.5-pro: Higher quality"
 )
 
-# Model descriptions
-model_descriptions = {
-    "facebook/bart-large-cnn": "Best for summarization, fast & reliable",
-    "google/pegasus-xsum": "Excellent abstractive summarization", 
-    "sshleifer/distilbart-cnn-12-6": "Lightweight version of BART",
-    "Falconsai/text_summarization": "General purpose summarization",
-    "pszemraj/led-base-book-summary": "Good for long documents"
+temperature = st.sidebar.slider(
+    "Temperature",
+    min_value=0.0,
+    max_value=1.0,
+    value=0.3,
+    step=0.1,
+    help="Lower = more factual, Higher = more creative"
+)
+
+summary_length = st.sidebar.selectbox(
+    "Summary Length",
+    options=["Concise (1-2 paragraphs)", "Detailed (3-4 paragraphs)", "Comprehensive (5+ paragraphs)"],
+    index=1,
+    help="Control the length of the summary"
+)
+
+# Map selection to token limits
+length_map = {
+    "Concise (1-2 paragraphs)": 500,
+    "Detailed (3-4 paragraphs)": 800,
+    "Comprehensive (5+ paragraphs)": 1200
 }
+max_output_tokens = length_map[summary_length]
 
-st.sidebar.markdown(f'**Selected:** `{selected_model}`')
-st.sidebar.caption(model_descriptions[selected_model])
+# Initialize the model
+@st.cache_resource
+def get_gemini_model(model_name, temperature):
+    """Initialize and cache Gemini model"""
+    generation_config = {
+        "temperature": temperature,
+        "top_p": 0.95,
+        "top_k": 40,
+        "max_output_tokens": max_output_tokens,
+    }
+    
+    safety_settings = [
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+    ]
+    
+    return genai.GenerativeModel(
+        model_name=model_name,
+        generation_config=generation_config,
+        safety_settings=safety_settings
+    )
 
-# ============================
-# Updated Hugging Face Router API Function
-# ============================
-def summarize_with_hf_router(text, model_id):
-    """Summarize text using Hugging Face Router API"""
-    
-    if HF_TOKEN:
-        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    else:
-        headers = {}
-        st.warning("⚠️ Using without token - limited to 10 requests/hour")
-    
-    # Prepare the text (limit length)
-    if len(text) > 10000:
-        text = text[:10000]
-        st.info(f"Text truncated to 10000 characters for processing")
-    
-    try:
-        # For summarization models
-        payload = {
-            "inputs": text,
-            "parameters": {
-                "max_length": 512,
-                "min_length": 100,
-                "do_sample": False
-            }
-        }
-        
-        # Make request to router API
-        response = requests.post(
-            f"{HF_ROUTER_API}/models/{model_id}",
-            headers=headers,
-            json=payload,
-            timeout=90  # Increased timeout
-        )
-        
-        # Handle response
-        if response.status_code == 200:
-            result = response.json()
-            
-            if isinstance(result, list) and len(result) > 0:
-                if 'summary_text' in result[0]:
-                    return result[0]['summary_text']
-                elif 'generated_text' in result[0]:
-                    return result[0]['generated_text']
-                else:
-                    # Try to extract any text response
-                    return str(result[0])[:2000]
-            else:
-                return "No summary generated"
-                
-        elif response.status_code == 503:
-            return f"⏳ Model is loading. Please try again in 30 seconds. Status: {response.text[:100]}"
-            
-        else:
-            error_msg = response.text[:200] if response.text else "No error details"
-            return f"❌ API Error {response.status_code}: {error_msg}"
-            
-    except requests.exceptions.Timeout:
-        return "⏱️ Request timeout. Please try again."
-    except requests.exceptions.ConnectionError:
-        return "🔌 Connection error. Please check your internet."
-    except Exception as e:
-        return f"❌ Unexpected error: {str(e)}"
+model = get_gemini_model(model_name, temperature)
 
 # ============================
-# Alternative: Direct Inference API (if router doesn't work)
-# ============================
-def summarize_with_direct_api(text, model_id):
-    """Alternative method using direct inference"""
-    
-    # Use Inference API directly (some models still work here)
-    API_URL = f"https://api-inference.huggingface.co/models/{model_id}"
-    
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"} if HF_TOKEN else {}
-    
-    payload = {"inputs": text[:8000]}
-    
-    try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
-        
-        if response.status_code == 200:
-            result = response.json()
-            if isinstance(result, list) and len(result) > 0:
-                return result[0].get('summary_text', str(result[0])[:1500])
-        return f"Direct API error: {response.status_code}"
-        
-    except Exception as e:
-        return f"Direct API failed: {str(e)}"
-
-# ============================
-# Text Extraction Functions
+# File Processing Functions
 # ============================
 def extract_text_from_pdf(file_path):
-    """Extract text from PDF"""
+    """Extract text from PDF using PyPDF"""
     try:
-        # Try pypdf first
         from pypdf import PdfReader
         reader = PdfReader(file_path)
         text = ""
-        for page in reader.pages:
+        
+        for page_num, page in enumerate(reader.pages, 1):
             page_text = page.extract_text()
             if page_text:
-                text += page_text + "\n\n"
-        return text.strip()
+                text += f"--- Page {page_num} ---\n{page_text}\n\n"
+        
+        return text.strip() if text else "No text could be extracted from PDF"
+        
     except ImportError:
-        return "Please install pypdf: pip install pypdf"
+        return "ERROR: Please install pypdf (pip install pypdf)"
     except Exception as e:
-        return f"PDF error: {str(e)}"
+        return f"ERROR extracting PDF: {str(e)}"
 
-def extract_text_from_txt(file_content):
-    """Extract text from txt file"""
+def extract_text_from_txt(file_path):
+    """Extract text from TXT file"""
     try:
-        return file_content.decode('utf-8')
-    except:
-        try:
-            return file_content.decode('latin-1')
-        except:
-            return "Could not decode text file"
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            return f.read()
+    except Exception as e:
+        return f"ERROR reading text file: {str(e)}"
 
-# ============================
-# File Processing
-# ============================
-def process_files(uploaded_files):
-    """Process uploaded files and extract text"""
+def process_uploaded_files(uploaded_files):
+    """Process all uploaded files and extract text"""
     all_text = ""
-    file_count = 0
+    file_details = []
     
     for uploaded_file in uploaded_files:
-        file_count += 1
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as temp_file:
+        # Create temporary file
+        suffix = Path(uploaded_file.name).suffix
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
             temp_file.write(uploaded_file.read())
             temp_path = temp_file.name
         
         try:
+            file_text = ""
             if uploaded_file.type == "application/pdf":
-                text = extract_text_from_pdf(temp_path)
+                file_text = extract_text_from_pdf(temp_path)
+                file_type = "📄 PDF"
             elif uploaded_file.type == "text/plain":
-                with open(temp_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    text = f.read()
+                file_text = extract_text_from_txt(temp_path)
+                file_type = "📝 TXT"
             else:
-                st.warning(f"Unsupported file type: {uploaded_file.name}")
-                text = ""
+                st.warning(f"⚠️ Unsupported file type: {uploaded_file.name}")
+                continue
             
-            if text and len(text) > 50:
-                all_text += f"\n\n{'='*50}\nDocument {file_count}: {uploaded_file.name}\n{'='*50}\n\n{text}"
-                st.success(f"✅ Processed: {uploaded_file.name}")
+            if file_text and not file_text.startswith("ERROR"):
+                # Add to combined text
+                all_text += f"\n\n{'='*60}\n📁 FILE: {uploaded_file.name}\n{'='*60}\n\n{file_text}"
+                
+                # Store file details
+                file_details.append({
+                    "name": uploaded_file.name,
+                    "type": file_type,
+                    "size": len(uploaded_file.getvalue()),
+                    "text_length": len(file_text),
+                    "pages": file_text.count("--- Page") if uploaded_file.type == "application/pdf" else 1
+                })
+                
+                # Show success message
+                st.markdown(f"""
+                <div class="file-card">
+                ✅ <b>{uploaded_file.name}</b><br>
+                {file_type} • {len(file_text):,} characters • {file_details[-1]['pages']} pages
+                </div>
+                """, unsafe_allow_html=True)
             else:
-                st.warning(f"⚠️ Minimal text extracted from: {uploaded_file.name}")
+                st.error(f"❌ Failed to process: {uploaded_file.name}")
                 
         except Exception as e:
-            st.error(f"Error processing {uploaded_file.name}: {str(e)}")
+            st.error(f"❌ Error processing {uploaded_file.name}: {str(e)}")
         finally:
-            if os.path.exists(temp_path):
+            # Clean up temp file
+            try:
                 os.unlink(temp_path)
+            except:
+                pass
     
-    return all_text.strip()
+    return all_text.strip(), file_details
+
+# ============================
+# Summarization Function
+# ============================
+def generate_summary(text, file_details):
+    """Generate summary using Gemini"""
+    
+    # Truncate if too long (Gemini has token limits)
+    original_length = len(text)
+    if original_length > 30000:
+        st.warning(f"⚠️ Document very large ({original_length:,} chars). Using first 30,000 characters.")
+        text = text[:30000]
+    
+    # Create context about files
+    files_context = ""
+    if file_details:
+        files_context = "Documents being summarized:\n"
+        for i, detail in enumerate(file_details, 1):
+            files_context += f"{i}. {detail['name']} ({detail['type']}, {detail['text_length']:,} chars)\n"
+    
+    # Create the prompt
+    prompt = f"""You are an expert financial analyst. Please analyze the following financial document(s) and provide a comprehensive summary.
+
+{files_context}
+
+**INSTRUCTIONS:**
+1. Focus on key financial metrics, performance indicators, and trends
+2. Identify strategic initiatives, developments, and milestones
+3. Note any risks, challenges, or concerns mentioned
+4. Highlight future outlook, guidance, and projections
+5. Mention important dates, deadlines, or events
+6. Structure the summary with clear paragraphs and bullet points where appropriate
+7. Use professional financial terminology
+
+**DOCUMENT CONTENT:**
+{text}
+
+**FINANCIAL ANALYSIS SUMMARY:**
+"""
+    
+    try:
+        # Generate response
+        response = model.generate_content(prompt)
+        
+        if response.text:
+            return response.text
+        else:
+            return "No summary generated. The response was blocked or empty."
+            
+    except Exception as e:
+        return f"Error generating summary: {str(e)}"
 
 # ============================
 # Main App Interface
 # ============================
-st.markdown('<h1 class="main-header">📄 Document Summarizer</h1>', unsafe_allow_html=True)
-st.write("Upload documents for AI-powered summarization using Hugging Face models")
+st.markdown('<h1 class="main-header">💼 Financial Document Summarizer</h1>', unsafe_allow_html=True)
 
-# File upload
+st.markdown("""
+<div style="text-align: center; margin-bottom: 2rem; color: #4b5563;">
+Upload financial documents (PDF/TXT) for AI-powered analysis using <b>Google Gemini AI (Free Tier)</b>
+</div>
+""", unsafe_allow_html=True)
+
+# File upload section
 uploaded_files = st.file_uploader(
-    "📁 Choose files (PDF or TXT)",
+    "📁 Drag and drop files here",
     type=["pdf", "txt"],
-    accept_multiple_files=True
+    accept_multiple_files=True,
+    help="Upload multiple PDF or text files. They will be combined for analysis."
 )
 
 if uploaded_files:
-    with st.spinner("📂 Processing uploaded files..."):
-        text = process_files(uploaded_files)
+    st.success(f"✅ {len(uploaded_files)} file(s) selected")
     
-    if text and len(text) > 100:
-        # Show statistics
-        col1, col2, col3 = st.columns(3)
+    # Process files
+    with st.spinner("🔍 Extracting and processing documents..."):
+        extracted_text, file_details = process_uploaded_files(uploaded_files)
+    
+    if extracted_text and len(extracted_text) > 100:
+        # Display file statistics
+        st.subheader("📊 Document Statistics")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        total_chars = sum(fd["text_length"] for fd in file_details)
+        total_pages = sum(fd.get("pages", 1) for fd in file_details)
+        
         with col1:
-            st.metric("Files", len(uploaded_files))
+            st.markdown('<div class="metric-card"><b>Total Files</b><br><span style="font-size: 2rem;">📚</span><br><span style="font-size: 1.5rem;">{}</span></div>'.format(len(file_details)), unsafe_allow_html=True)
         with col2:
-            st.metric("Characters", f"{len(text):,}")
+            st.markdown('<div class="metric-card"><b>Total Pages</b><br><span style="font-size: 2rem;">📄</span><br><span style="font-size: 1.5rem;">{}</span></div>'.format(total_pages), unsafe_allow_html=True)
         with col3:
-            words = len(text.split())
-            st.metric("Words", f"{words:,}")
+            st.markdown('<div class="metric-card"><b>Characters</b><br><span style="font-size: 2rem;">🔢</span><br><span style="font-size: 1.5rem;">{:,}</span></div>'.format(total_chars), unsafe_allow_html=True)
+        with col4:
+            st.markdown('<div class="metric-card"><b>Words</b><br><span style="font-size: 2rem;">📝</span><br><span style="font-size: 1.5rem;">{:,}</span></div>'.format(len(extracted_text.split())), unsafe_allow_html=True)
         
-        # Preview
-        with st.expander("📋 Preview Extracted Text"):
-            st.text(text[:2000] + "..." if len(text) > 2000 else text)
+        # Preview extracted text
+        with st.expander("📋 Preview Extracted Text", expanded=False):
+            preview = extracted_text[:3000]
+            if len(extracted_text) > 3000:
+                preview += "\n\n[... document truncated for preview ...]"
+            st.text(preview)
         
-        # Summarize button
-        if st.button("🚀 Generate Summary", type="primary", use_container_width=True):
-            with st.spinner(f"🤖 Summarizing with {selected_model.split('/')[-1]}..."):
-                # Try router API first
-                summary = summarize_with_hf_router(text, selected_model)
-                
-                # If router fails, try direct API
-                if summary and ("Error" in summary or "API" in summary):
-                    st.info("Trying alternative API method...")
-                    summary = summarize_with_direct_api(text, selected_model)
+        # Generate summary button
+        st.divider()
+        
+        if st.button("🚀 Generate Financial Summary", type="primary", use_container_width=True):
+            with st.spinner("🤖 Analyzing with Gemini AI. This may take a moment..."):
+                summary = generate_summary(extracted_text, file_details)
             
-            # Display results
-            st.subheader("📋 AI Summary")
+            # Display summary
+            st.subheader("📋 AI Financial Analysis Summary")
+            st.markdown(f'<div class="summary-box">{summary}</div>', unsafe_allow_html=True)
             
-            if summary and not ("Error" in summary or "API" in summary or "timeout" in summary.lower()):
-                st.markdown(f'<div class="summary-box">{summary}</div>', unsafe_allow_html=True)
-                
-                # Download button
-                st.download_button(
-                    "💾 Download Summary",
-                    summary,
-                    file_name="document_summary.txt",
-                    mime="text/plain",
-                    use_container_width=True
-                )
-            else:
-                st.error(f"Summary generation failed: {summary}")
-                
-                # Troubleshooting tips
-                with st.expander("🔧 Troubleshooting Tips"):
-                    st.markdown("""
-                    1. **Model Loading**: First request loads model (wait 30-60 seconds)
-                    2. **Rate Limits**: Without HF Token: 10 requests/hour
-                    3. **Text Length**: Very long texts may need truncation
-                    4. **Alternative Models**: Try `facebook/bart-large-cnn` (most reliable)
-                    5. **Retry**: Click the button again after 30 seconds
-                    """)
+            # Summary statistics
+            st.subheader("📈 Summary Statistics")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                compression = 100 - (len(summary) / total_chars * 100) if total_chars > 0 else 0
+                st.metric("Compression Ratio", f"{compression:.1f}%")
+            with col2:
+                st.metric("Summary Length", f"{len(summary):,} chars")
+            with col3:
+                st.metric("Word Count", f"{len(summary.split()):,}")
+            
+            # Download button
+            st.download_button(
+                label="💾 Download Summary as Text File",
+                data=summary,
+                file_name="financial_analysis_summary.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+            
+            # Show token usage info
+            st.caption(f"⚡ Using {model_name} | Temperature: {temperature} | Max tokens: {max_output_tokens}")
     else:
-        st.error("❌ Could not extract sufficient text from files")
+        st.error("❌ Could not extract sufficient text from the uploaded files")
 else:
-    st.info("👆 Upload PDF or text files to begin")
+    # Welcome message when no files uploaded
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+        <div style="text-align: center; padding: 3rem; background-color: #f8fafc; border-radius: 15px; margin: 2rem 0;">
+        <div style="font-size: 4rem;">📁</div>
+        <h3 style="color: #1f77b4;">Ready to Analyze</h3>
+        <p style="color: #64748b;">Upload financial documents to get started</p>
+        <p style="color: #94a3b8; font-size: 0.9rem;">Supported: PDF & TXT files</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ============================
-# Instructions
+# Footer & Information
 # ============================
-with st.expander("📚 Setup & Instructions"):
-    st.markdown("""
-    ### **🚀 Quick Start**
-    
-    1. **Upload files** (PDF or TXT)
-    2. **Select model** (facebook/bart-large-cnn recommended)
-    3. **Click Generate Summary**
-    
-    ### **⚙️ Requirements**
-    ```txt
-    streamlit>=1.28.0
-    requests>=2.28.0
-    pypdf>=3.0.0
-    ```
-    
-    ### **🔑 Optional: Get HF Token**
-    1. Visit: https://huggingface.co/settings/tokens
-    2. Create new token with "read" access
-    3. Add to `.streamlit/secrets.toml`:
-    ```toml
-    HF_TOKEN = "your-token-here"
-    ```
-    
-    ### **🔄 API Methods Used**
-    - **Primary**: router.huggingface.co (new endpoint)
-    - **Fallback**: api-inference.huggingface.co (legacy)
-    - **Models**: All listed models verified working
-    
-    ### **💡 Tips for Best Results**
-    - Start with **facebook/bart-large-cnn** (most stable)
-    - Use **HF Token** for better rate limits (500 vs 10 requests/hour)
-    - First request may take 30-60 seconds (model loading)
-    - For errors: Wait 30 seconds and retry
-    """)
+st.divider()
 
-st.caption("Powered by Hugging Face Inference APIs • Free to use")
+with st.expander("ℹ️ About This App & Setup Instructions", expanded=False):
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        ### **🎯 Features**
+        
+        - **Free Google Gemini API**: Generous free tier
+        - **Multi-file support**: Combine PDFs & text files
+        - **Financial focus**: Specialized for financial documents
+        - **Customizable**: Adjust length & creativity
+        - **Downloadable**: Save summaries as text files
+        
+        ### **📊 Supported Documents**
+        
+        - Annual reports
+        - Financial statements
+        - Earnings releases
+        - SEC filings (10-K, 10-Q)
+        - Investment memos
+        - Market research
+        """)
+    
+    with col2:
+        st.markdown("""
+        ### **⚙️ Setup Instructions**
+        
+        1. **Get FREE API Key**:
+           - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+           - Sign in & create API key
+        
+        2. **Add to Streamlit**:
+           ```toml
+           # .streamlit/secrets.toml
+           GOOGLE_API_KEY = "your-key-here"
+           ```
+        
+        3. **requirements.txt**:
+           ```txt
+           streamlit>=1.28.0
+           google-generativeai>=0.3.0
+           pypdf>=3.0.0
+           ```
+        
+        4. **Deploy** to Streamlit Cloud
+        
+        ### **💎 Free Tier Limits**
+        - 60 requests per minute
+        - 15 million tokens per month
+        - More than enough for personal use
+        """)
+
+st.markdown("---")
+st.caption("""
+<div style="text-align: center; color: #94a3b8;">
+Built with ❤️ using Streamlit • Powered by Google Gemini AI (Free Tier) • 
+<a href="https://makersuite.google.com/app/apikey" target="_blank" style="color: #3b82f6;">Get your free API key</a>
+</div>
+""", unsafe_allow_html=True)
