@@ -4,14 +4,18 @@ import sqlite3
 import pandas as pd
 import requests
 from datetime import datetime
-from openai import OpenAI
 
 # Updated LangChain imports for newer versions
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import SQLDatabaseToolkit, create_sql_agent
-from langchain_openai import ChatOpenAI  # Using ChatOpenAI for OpenRouter compatibility
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
-from langchain.callbacks import StreamlitCallbackHandler
+# Correct import for StreamlitCallbackHandler in newer versions
+try:
+    from langchain_community.callbacks import StreamlitCallbackHandler
+except ImportError:
+    # Fallback for older versions
+    from langchain.callbacks import StreamlitCallbackHandler
 
 # ── Config ───────────────────────────────────────────────────────────────────
 DB_FILE = "financial_data.db"
@@ -59,17 +63,17 @@ def init_sql_agent():
     try:
         # Configure LLM for OpenRouter with Mistral 7B
         llm = ChatOpenAI(
-            model="mistralai/mistral-7b-instruct:free",  # You can change to other Mistral models
+            model="mistralai/mistral-7b-instruct:free",
             temperature=0.0,
             openai_api_base="https://openrouter.ai/api/v1",
-            openai_api_key=os.environ.get("OPENROUTER_API_KEY")
+            openai_api_key=os.environ.get("OPENROUTER_API_KEY"),
+            max_tokens=500
         )
         
         db = SQLDatabase.from_uri(f"sqlite:///{DB_FILE}")
         toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 
-        CUSTOM_PROMPT = """
-        You are a financial database expert.
+        CUSTOM_PROMPT = """You are a financial database expert.
         Tables:
         - clients(client_id, name, age, risk_profile, portfolio_value)
         - investments(investment_id, client_id, fund_name, amount_invested, date)
@@ -78,12 +82,11 @@ def init_sql_agent():
         - Convert user questions to accurate SQL queries
         - Handle number conversions: 'lakh' = 100000, 'crore' = 10000000, 'k' = 1000
         - If no data found, say "No matching records found"
-        - Provide clear, concise answers after executing queries
-        - Return only the SQL query when asked to generate SQL
-        - For questions about data, execute the query and return the results
+        - Provide clear, concise answers
+        - Always return your final answer in Hindi/English mix (Hinglish) if possible
 
         Question: {input}
-        
+
         Thought Process: {agent_scratchpad}
         """
 
@@ -122,15 +125,12 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-user_question = st.chat_input(
-    "Sawaal: (e.g., High risk clients with portfolio > 10 lakh?)"
-)
-
-if user_question:
+# User input
+if prompt := st.chat_input("Sawaal: (e.g., High risk clients with portfolio > 10 lakh?)"):
     # Add user message to chat
-    st.session_state.messages.append({"role": "user", "content": user_question})
+    st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
-        st.markdown(user_question)
+        st.markdown(prompt)
     
     # Prepare for agent response
     with st.chat_message("assistant"):
@@ -142,10 +142,10 @@ if user_question:
                 
                 # Execute the agent
                 response = agent.invoke(
-                    {"input": user_question},
+                    {"input": prompt},
                     config={"callbacks": [callback]}
                 )
-                answer = response.get("output", "No response generated")
+                answer = response.get("output", "Kuchh gadbad hai, phir se try karo.")
                 
                 # Display the final answer
                 st.markdown("### 🎯 Jawaab:")
@@ -153,7 +153,7 @@ if user_question:
                 
                 # Add to history
                 st.session_state.messages.append({"role": "assistant", "content": answer})
-                st.session_state.history.append({"role": "user", "content": user_question})
+                st.session_state.history.append({"role": "user", "content": prompt})
                 st.session_state.history.append({"role": "assistant", "content": answer})
 
                 # N8N webhook (optional)
@@ -164,7 +164,7 @@ if user_question:
                             N8N_URL,
                             json={
                                 "event": "sql_question_asked",
-                                "question": user_question,
+                                "question": prompt,
                                 "answer": answer,
                                 "timestamp": datetime.now().isoformat(),
                                 "model": "mistral-7b-instruct"
@@ -182,21 +182,22 @@ if user_question:
 
 # ── History Section ──────────────────────────────────────────────────────────
 if st.session_state.history:
-    with st.expander("📜 Conversation History", expanded=False):
+    with st.expander("📜 Purani baatein", expanded=False):
         for i, msg in enumerate(st.session_state.history):
-            role = "🧑‍💻 Tum" if msg["role"] == "user" else "🤖 Assistant"
-            st.markdown(f"**{role}:**")
-            st.markdown(msg["content"])
+            if msg["role"] == "user":
+                st.markdown(f"**🧑‍💻 Tum:** {msg['content']}")
+            else:
+                st.markdown(f"**🤖 Assistant:** {msg['content']}")
             if i < len(st.session_state.history) - 1:
                 st.markdown("---")
 
 # ── DB Preview ───────────────────────────────────────────────────────────────
 st.markdown("---")
-st.header("🔍 Database Preview (first 5 rows)")
+st.header("🔍 Database Preview")
 
 col1, col2 = st.columns(2)
 with col1:
-    with st.expander("👥 Clients Table"):
+    with st.expander("👥 Clients Table (first 5 rows)"):
         try:
             with sqlite3.connect(DB_FILE) as conn:
                 df = pd.read_sql_query("SELECT * FROM clients LIMIT 5", conn)
@@ -205,7 +206,7 @@ with col1:
             st.error(f"Clients table read fail: {e}")
 
 with col2:
-    with st.expander("💰 Investments Table"):
+    with st.expander("💰 Investments Table (first 5 rows)"):
         try:
             with sqlite3.connect(DB_FILE) as conn:
                 df = pd.read_sql_query("SELECT * FROM investments LIMIT 5", conn)
@@ -213,38 +214,18 @@ with col2:
         except Exception as e:
             st.error(f"Investments table read fail: {e}")
 
-# ── SQL Schema Info ──────────────────────────────────────────────────────────
-with st.expander("📋 Database Schema Information"):
-    try:
-        with sqlite3.connect(DB_FILE) as conn:
-            cursor = conn.cursor()
-            
-            # Get all tables
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            tables = cursor.fetchall()
-            
-            for table in tables:
-                table_name = table[0]
-                st.subheader(f"Table: `{table_name}`")
-                
-                # Get schema
-                cursor.execute(f"PRAGMA table_info({table_name})")
-                columns = cursor.fetchall()
-                
-                schema_data = []
-                for col in columns:
-                    schema_data.append({
-                        "Column": col[1],
-                        "Type": col[2],
-                        "Nullable": "No" if col[3] else "Yes",
-                        "Default": col[4] if col[4] else "None",
-                        "PK": "Yes" if col[5] else "No"
-                    })
-                
-                df_schema = pd.DataFrame(schema_data)
-                st.dataframe(df_schema, use_container_width=True)
-                st.markdown("---")
-    except Exception as e:
-        st.error(f"Schema extraction failed: {e}")
+# ── Sample Questions ─────────────────────────────────────────────────────────
+with st.expander("💡 Sample Questions try karo"):
+    st.markdown("""
+    **Try these questions:**
+    - Kitne clients hain?
+    - High risk profile wale clients kaun hain?
+    - Total portfolio value kitni hai?
+    - 25 se 35 saal ke clients kaun hain?
+    - 'ABC Equity Fund' mein kitna investment hai?
+    - 10 lakh se zyada portfolio wale clients kaun hain?
+    - Sabse zyada investment kis fund mein hai?
+    - Average age of clients kitni hai?
+    """)
 
 st.caption("Streamlit + LangChain + Mistral 7B • Abhinav Nautiyal • 2026")
