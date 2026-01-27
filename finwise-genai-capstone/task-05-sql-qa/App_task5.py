@@ -71,7 +71,7 @@ def init_sql_agent():
     try:
         # Configure LLM for OpenRouter with Mistral 7B
         llm = ChatOpenAI(
-            model="mistralai/mistral-7b-instruct",
+            model="nousresearch/hermes-3-llama-3.1-8b:free",
             temperature=0.0,
             openai_api_base="https://openrouter.ai/api/v1",
             openai_api_key=os.environ.get("OPENROUTER_API_KEY"),
