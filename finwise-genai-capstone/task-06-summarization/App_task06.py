@@ -2,8 +2,6 @@ import os
 import tempfile
 import streamlit as st
 import requests
-import json
-from pathlib import Path
 from pypdf import PdfReader
 
 # ============================
@@ -11,66 +9,88 @@ from pypdf import PdfReader
 # ============================
 st.set_page_config(
     page_title="Financial Document Summarizer",
-    page_icon="📊",
+    page_icon="💼",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
 # ============================
-# Custom CSS (ONLY chain UI added)
+# UI CSS (ONLY chain UI styled)
 # ============================
 st.markdown("""
 <style>
 
-.chain-card {
-    background: #111827;
-    border: 1px solid #1f2937;
-    border-radius: 10px;
-    padding: 14px;
-    width: 100%;
+html, body, .stApp {
+    background-color: #0b0f14;
+    color: white;
 }
 
-.chain-label-ui {
-    font-size: 0.9rem;
+.main-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 1.2rem;
+}
+
+.chain-card {
+    background: linear-gradient(180deg, #0f172a, #0b1220);
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 12px 16px;
+}
+
+.chain-label {
     color: #9ca3af;
+    font-size: 0.9rem;
     margin-bottom: 6px;
 }
 
-.chain-select select {
-    background-color: #020617 !important;
+.stSelectbox > div > div {
+    background-color: #111827 !important;
     color: white !important;
     border-radius: 6px !important;
     border: 1px solid #374151 !important;
+}
+
+.stSlider > div > div > div > div {
+    background-color: #ef4444 !important;
+}
+
+.upload-box {
+    border: 1px solid #2b2f3a;
+    border-radius: 10px;
+    padding: 24px;
+    background: #1b1f2a;
+}
+
+.status-green {
+    background: #123b2a;
+    border-left: 4px solid #22c55e;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 12px;
+}
+
+button {
+    border-radius: 8px !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 # ============================
-# Initialize OpenRouter API
+# API INIT
 # ============================
 def init_openrouter():
     try:
-        return st.secrets["OPENROUTER_API_KEY"], "ok"
-    except KeyError:
-        return None, "missing"
+        return st.secrets["OPENROUTER_API_KEY"]
+    except:
+        return None
 
-# ============================
-# API Configuration
-# ============================
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL_NAME = "mistralai/mistral-7b-instruct"
-MAX_OUTPUT_TOKENS = 1000
 
 # ============================
-# Token helpers
-# ============================
-def truncate_text(text, max_tokens=6000):
-    max_chars = max_tokens * 4
-    return text[:max_chars], len(text) // 4, len(text) > max_chars
-
-# ============================
-# File processing
+# FILE HELPERS
 # ============================
 def extract_text_from_pdf(file_bytes):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as f:
@@ -93,25 +113,25 @@ def extract_text_from_txt(file_bytes):
 def process_uploaded_file(uploaded_file):
     data = uploaded_file.getvalue()
     if uploaded_file.type == "application/pdf":
-        return (*extract_text_from_pdf(data), "PDF")
+        t, p = extract_text_from_pdf(data)
+        return t, p, "PDF"
     if uploaded_file.type == "text/plain":
-        return (*extract_text_from_txt(data), "TXT")
+        t, p = extract_text_from_txt(data)
+        return t, p, "TXT"
     return "", 0, None
 
 # ============================
-# Summarizer
+# SUMMARIZER
 # ============================
 def summarize_financial_document(text, api_key, temperature):
-    truncated, _, _ = truncate_text(text)
-
     payload = {
         "model": MODEL_NAME,
         "messages": [
             {"role": "system", "content": "You are a financial document summarizer."},
-            {"role": "user", "content": truncated}
+            {"role": "user", "content": text[:24000]}
         ],
         "temperature": temperature,
-        "max_tokens": MAX_OUTPUT_TOKENS
+        "max_tokens": 1000
     }
 
     headers = {
@@ -125,24 +145,27 @@ def summarize_financial_document(text, api_key, temperature):
 # ============================
 # MAIN APP
 # ============================
+api_key = init_openrouter()
 
-api_key, _ = init_openrouter()
-
-st.markdown("## 💼 Financial Document Summarizer")
+st.markdown('<div class="main-title">💼 Financial Document Summarizer</div>', unsafe_allow_html=True)
 
 # ============================
 # OPTIONS ROW
 # ============================
-col1, col2 = st.columns([1, 2])
+col1, col2 = st.columns([1.2, 1.8])
 
 with col1:
     st.markdown("**Temperature**")
-    temperature = st.slider("", 0.0, 1.0, 0.6, 0.1, label_visibility="collapsed")
+    temperature = st.slider(
+        "",
+        0.0, 1.0, 0.80, 0.05,
+        label_visibility="collapsed"
+    )
 
 with col2:
     st.markdown("""
     <div class="chain-card">
-        <div class="chain-label-ui">Chain Type</div>
+        <div class="chain-label">Chain Type</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -157,27 +180,65 @@ st.markdown(
 )
 
 # ============================
-# FILE UPLOAD
+# UPLOAD
 # ============================
-uploaded_file = st.file_uploader("", type=["pdf", "txt"])
+st.markdown('<div class="upload-box">', unsafe_allow_html=True)
+
+uploaded_file = st.file_uploader(
+    "Drag and drop file here",
+    type=["pdf", "txt"],
+    label_visibility="collapsed"
+)
+
+st.markdown("Limit 200MB per file · PDF, TXT")
+st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================
 # PROCESS
 # ============================
 if uploaded_file:
-    text, pages, file_type = process_uploaded_file(uploaded_file)
+    size_kb = len(uploaded_file.getvalue()) / 1024
 
-    st.success(f"Loaded {pages} pages from {file_type}")
+    st.markdown(
+        f"📄 **{uploaded_file.name}** · {size_kb:.1f} KB"
+    )
 
-    if st.button("Generate Financial Summary"):
-        with st.spinner("Generating..."):
-            summary = summarize_financial_document(text, api_key, temperature)
+    with st.spinner("Processing document..."):
+        text, pages, ftype = process_uploaded_file(uploaded_file)
 
-        st.markdown("### Financial Summary")
-        st.markdown(summary)
-
-        st.download_button(
-            "Download Summary",
-            summary,
-            file_name="summary.txt"
+    if text:
+        st.markdown(
+            f"""
+            <div class="status-green">
+            ✅ Loaded {pages} pages from PDF
+            </div>
+            """,
+            unsafe_allow_html=True
         )
+
+        if st.button("Generate Financial Summary"):
+            with st.spinner("Generating summary..."):
+                summary = summarize_financial_document(
+                    text,
+                    api_key,
+                    temperature
+                )
+
+            st.markdown("### 📘 Financial Summary")
+            st.markdown(summary)
+
+            st.download_button(
+                "Download Summary",
+                summary,
+                file_name="financial_summary.txt"
+            )
+
+# ============================
+# MANAGE APP
+# ============================
+with st.expander("Manage app"):
+    st.info("""
+Model: mistralai/mistral-7b-instruct  
+Context: 8k tokens  
+Files: PDF, TXT  
+""")
