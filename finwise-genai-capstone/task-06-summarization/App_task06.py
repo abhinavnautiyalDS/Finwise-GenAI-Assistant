@@ -50,10 +50,10 @@ st.markdown(
 # ============================
 FREE_MODELS = {
     "meta-llama/Llama-3.1-8B-Instruct": {
-        "name": "BART Large CNN",
+        "name": "Lamma",
         "description": "Specialized for summarization, very fast",
         "max_length": 1024,
-        "type": "summarization"
+        "type": "text-generation"
     },
     "google/pegasus-xsum": {
         "name": "Pegasus XSum",
