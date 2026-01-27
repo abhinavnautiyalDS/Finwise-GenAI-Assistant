@@ -577,3 +577,14 @@ if st.sidebar.checkbox("Show debug info", value=False):
                     st.sidebar.code(name)
         except Exception as e:
             st.sidebar.error(f"API test failed: {str(e)}")
+
+# Test code to see available models
+import google.generativeai as genai
+genai.configure(api_key="your-api-key")
+
+models = genai.list_models()
+for model in models:
+    if "gemini" in model.name.lower():
+        print(f"Model: {model.name}")
+        print(f"  Supported methods: {model.supported_generation_methods}")
+        print()
