@@ -71,7 +71,7 @@ st.markdown("""
     /* File info cards */
     .file-card {
         background-color: #f1f5f9;
-        color: #ffffff !important;
+        color: #1f2937 !important;
         padding: 1rem;
         border-radius: 8px;
         margin: 0.5rem 0;
