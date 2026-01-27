@@ -49,7 +49,7 @@ st.markdown(
 # Available FREE Hugging Face Models with Inference
 # ============================
 FREE_MODELS = {
-    "facebook/bart-large-cnn": {
+    "meta-llama/Llama-3.1-8B-Instruct": {
         "name": "BART Large CNN",
         "description": "Specialized for summarization, very fast",
         "max_length": 1024,
