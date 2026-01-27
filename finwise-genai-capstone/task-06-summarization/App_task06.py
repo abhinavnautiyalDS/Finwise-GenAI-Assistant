@@ -88,9 +88,8 @@ verbose = st.sidebar.checkbox("Verbose (console logs)", value=False)
 @st.cache_resource
 def get_llm(temp):
     return ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",  # Updated model name
-        temperature=temp,
-        convert_system_message_to_human=True
+        model="gemini-1.5-flash",
+        temperature=temp
     )
 
 llm = get_llm(temperature)
@@ -178,7 +177,7 @@ def split_documents(raw_documents):
     return splitter.split_documents(raw_documents)
 
 # ============================
-# Summarization Logic (UPDATED FOR LANGCCHAIN 0.1+)
+# Summarization Logic
 # ============================
 
 def summarize_documents(docs, chain_type, llm, verbose=False):
@@ -221,7 +220,6 @@ def summarize_documents(docs, chain_type, llm, verbose=False):
         return "Invalid chain type."
 
     try:
-        # Updated invocation method
         result = chain.invoke({"input_documents": docs})
         return result["output_text"]
     except Exception as e:
