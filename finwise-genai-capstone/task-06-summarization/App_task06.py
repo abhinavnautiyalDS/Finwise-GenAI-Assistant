@@ -1,7 +1,15 @@
 import os
 import tempfile
 import streamlit as st
+import langchain
+print(f"LangChain version: {langchain.__version__}")
+print(f"LangChain path: {langchain.__file__}")
 
+# List available modules
+import pkgutil
+import langchain as lc
+for importer, modname, ispkg in pkgutil.iter_modules(lc.__path__):
+    print(f"Module: {modname} (is package: {ispkg})")
 # ============================
 # LangChain 1.x Imports
 # ============================
