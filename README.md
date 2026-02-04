@@ -221,7 +221,8 @@ AI generates intelligence; n8n operationalizes it.
 ---
 
 ## project structure 
-'''
+
+```
 📁 finwise-genai-capstone/
  ├── 📁 task-01-chatbot-memory/
  │ ├── chatbot_with_memory.ipynb
@@ -267,7 +268,7 @@ AI generates intelligence; n8n operationalizes it.
  │ └── explanation_video.mp4
  │
  └── 📄 README.md – Project overview, team member contributions, instructions to run each module
- '''
+ ```
 
 
 ## Evaluation Strategy (Industry-Aligned)
@@ -284,6 +285,13 @@ End-to-end reliability for automation
 Where automated metrics were not suitable, **human evaluation** was used, which is standard in production GenAI systems.
 
 ---
+
+## Streamlit app preview and details 
+
+<img width="1920" height="2267" alt="image" src="https://github.com/user-attachments/assets/1c180045-4afd-4e31-9fd1-456f78d17bd9" />
+
+**App link** : https://finwise-genai-assistant-3hnjjkrdyf2qilqczr98mu.streamlit.app/
+
 
 ## Key Takeaways
 
