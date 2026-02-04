@@ -1,10 +1,8 @@
 # Finwise – End-to-End Financial GenAI Assistant
-
-**Finwise** is a modular, production-style Generative AI system designed to solve real-world financial problems using Large Language Models, retrieval systems, agents, databases, summarization pipelines, and workflow automation.
-
 <img width="970" height="546" alt="image" src="https://github.com/user-attachments/assets/3bd6662d-2522-47ec-b0a4-9843e5c110bf" />
 
 
+**Finwise** is a modular, production-style Generative AI system designed to solve real-world financial problems using Large Language Models, retrieval systems, agents, databases, summarization pipelines, and workflow automation.
 This project goes beyond a simple chatbot and demonstrates how **stateless LLMs can be converted into reliable, controllable, and scalable applications** by adding memory, tools, reasoning, grounding, and orchestration.
 
 ---
