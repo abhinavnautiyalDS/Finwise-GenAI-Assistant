@@ -221,7 +221,7 @@ AI generates intelligence; n8n operationalizes it.
 ---
 
 ## project structure 
-
+'''
 📁 finwise-genai-capstone/
  ├── 📁 task-01-chatbot-memory/
  │ ├── chatbot_with_memory.ipynb
@@ -267,6 +267,7 @@ AI generates intelligence; n8n operationalizes it.
  │ └── explanation_video.mp4
  │
  └── 📄 README.md – Project overview, team member contributions, instructions to run each module
+ '''
 
 
 ## Evaluation Strategy (Industry-Aligned)
