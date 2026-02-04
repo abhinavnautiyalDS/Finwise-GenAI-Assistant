@@ -220,6 +220,55 @@ AI generates intelligence; n8n operationalizes it.
 
 ---
 
+## project structure 
+
+📁 finwise-genai-capstone/
+ ├── 📁 task-01-chatbot-memory/
+ │ ├── chatbot_with_memory.ipynb
+ │ ├── requirements.txt
+ │ ├── README.md – Description of logic, flow, memory type used
+ │ ├── sample_conversations.json
+ │ └── explanation_video.mp4
+ │
+ ├── 📁 task-02-agent-tools-langgraph/
+ │ ├── agent_with_tools.ipynb
+ │ ├── tools_config.py
+ │ ├── README.md – Explanation of how tools were defined, used, and orchestrated via LangGraph
+ │ └── explanation_video.mp4
+ │
+ ├── 📁 task-03-rag-basic/
+ │ ├── basic_rag_retrieval.ipynb
+ │ ├── documents/ (sample PDFs)
+ │ ├── README.md – How embedding and retrieval works with FAISS
+ │ └── explanation_video.mp4
+ │
+ ├── 📁 task-04-rag-advanced-memory/
+ │ ├── rag_with_memory.ipynb
+ │ ├── multiquery_demo_queries.json
+ │ ├── README.md – Deep dive into multi-step retrieval and memory chaining
+ │ └── explanation_video.mp4
+ │
+ ├── 📁 task-05-sql-qa/
+ │ ├── sql_qa_system.ipynb
+ │ ├── portfolio.db – SQLite database
+ │ ├── README.md – Sample queries, LLM prompt template logic
+ │ └── explanation_video.mp4
+ │
+ ├── 📁 task-06-summarization/
+ │ ├── summarizer.ipynb
+ │ ├── sample_documents/
+ │ ├── README.md – Use of summarization chains, how chunking is handled
+ │ └── explanation_video.mp4
+ │
+
+ ├── 📁 task-07-workflow-automation-n8n/
+ │ ├── n8n_workflow.json
+ │ ├── README.md – Flow setup, how webhook integrates with LangChain outputs
+ │ └── explanation_video.mp4
+ │
+ └── 📄 README.md – Project overview, team member contributions, instructions to run each module
+
+
 ## Evaluation Strategy (Industry-Aligned)
 
 Each task was evaluated using appropriate methods:
