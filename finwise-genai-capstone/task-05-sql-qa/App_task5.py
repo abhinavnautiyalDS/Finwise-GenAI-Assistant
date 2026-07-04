@@ -4,7 +4,6 @@ import sqlite3
 import pandas as pd
 import requests
 from datetime import datetime
-
 # Updated LangChain imports
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import SQLDatabaseToolkit, create_sql_agent
