@@ -2,7 +2,7 @@
 # Financial Chatbot with Memory
 # Hugging Face – FIXED with ChatHuggingFace wrapper (Jan 2026)
 # Built by Abhinav Nautiyal
-# ===============================
+# ==============================
 import streamlit as st
 from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_core.chat_history import InMemoryChatMessageHistory
