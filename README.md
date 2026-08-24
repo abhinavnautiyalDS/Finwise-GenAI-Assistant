@@ -13,7 +13,7 @@ The project is structured into independent but connected tasks, where each task 
 
 **Task 1:** Conversational memory  
 **Task 2:** Agentic reasoning with tools  
-**Task 3 & 4:** Retrieval-Augmented Generation (RAG) with memory  
+**Task 3 & 4:** Retrieval-Augmented Generation (RAG) with memory
 **Task 5:** Natural language to SQL querying  
 **Task 6:** Long document summarization  
 **Task 7:** Workflow automation using n8n  
